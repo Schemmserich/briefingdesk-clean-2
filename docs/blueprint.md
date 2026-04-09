@@ -1,0 +1,24 @@
+# **App Name**: BriefingDesk
+
+## Core Features:
+
+- Intelligent Briefing Generation: Utilizes a simulated AI engine to process mock articles, detect duplicates, group related content into event clusters, and generate curated briefings (Ultra Short Update, Short Update, Morning Briefing, Executive Summary) based on user-defined criteria. The AI engine will use reasoning as a tool to ensure summaries are original, concise, distinguish factual reporting from analysis/opinion, and mark uncertainty clearly, all while adhering to core trust rules like using only whitelist-approved sources and never reproducing full copyrighted articles. It also provides optional 'Why markets care' and 'What changed in this window' sections.
+- Dynamic Briefing Display: Renders comprehensive briefing results, featuring a main title, overview paragraph, category sections, optional analytical sections, event clusters with supporting sources, and detailed source cards (name, title, publication time, region, category, direct link). It also displays a summary confidence/source quality indicator.
+- Intuitive User Dashboard: Provides a premium dashboard for users to easily select briefing parameters (language, timeframe, category, region, output format) using quick timeframe chips, multiselects, toggles, and selectors. Includes buttons to 'Generate Briefing', 'Save Preset', and 'Use Morning Preset'.
+- Source Whitelist Administration: A clean admin table interface to manage trusted news sources, allowing them to be enabled/disabled, tagged by region/category, marked as free/premium, assigned a trust priority, and configured for metadata-only or normal summary mode. Includes placeholders for initial sources like The Guardian, NYT, BBC, CNN, ZDF.
+- Bilingual Interface Support: Provides full UI localization in German and English, using i18n dictionaries for all labels, buttons, placeholders, messages, and errors. Generated summaries will also be in the selected language, while source article titles remain in their original language.
+- Personalized Presets & History Management: Enables users to save custom briefing configurations as presets, including a default 'Morning Preset'. Provides dedicated pages for managing saved presets and viewing briefing history, with mock persistence for prototyping.
+- Production-Ready Data Models: Implementation of production-ready TypeScript interfaces for core application entities: User, UserPreset, BriefingRequest, BriefingResult, Article, SourceConfig, and EventCluster, designed for future Firebase Firestore integration.
+- Mock Data Ingestion and Ranking Logic: Builds a mock ingestion pipeline using local seed data to simulate article fetching, duplicate detection via canonicalHash, and sophisticated ranking based on recency, trustScore, source confirmation, category/region match, and market relevance. Groups related articles into event clusters using mock article data across all categories and regions.
+- Firebase Integration Architecture: Prepares the project architecture (Next.js, clean component structure, TypeScript) for seamless integration with Firebase services including Authentication, Firestore, Cloud Functions/Server Actions, scheduled jobs, Firebase App Hosting, and push notifications, using mock data and local logic initially.
+
+## Style Guidelines:
+
+- Overall color scheme is dark, reflecting professionalism and enabling high-contrast readability. Primary color for interactive elements and emphasis: A rich, muted deep blue, like '#244A8E' (HSL: 220, 60%, 35%).
+- Background color: A very dark, subtle cool gray, derived from the primary hue but heavily desaturated, such as '#14191F' (HSL: 220, 15%, 10%).
+- Accent color for calls-to-action and important highlights: A vibrant, analogous violet, providing a sophisticated contrast, like '#A333E0' (HSL: 250, 80%, 60%).
+- Headlines and prominent text elements will use 'Space Grotesk' (sans-serif), offering a modern, tech-informed aesthetic suitable for a news-generation tool.
+- Body text and longer content passages will use 'Inter' (sans-serif), ensuring excellent readability and a clean, objective presentation for the detailed briefings.
+- Minimalistic and clear line-art icons that align with a premium, professional, and clutter-free user interface, ensuring consistency across all features.
+- Implement a responsive, mobile-first design with a focus on generous spacing, elegant card-based structures, and clear hierarchical presentation of information, creating a premium dashboard experience with minimal clutter.
+- Subtle and polished loading skeletons for data fetching, smooth transitions for UI changes, and responsive feedback on user interactions to enhance perceived performance and fluidity, including fast filter interactions.
