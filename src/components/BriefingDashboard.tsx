@@ -43,6 +43,7 @@ export function BriefingDashboard() {
       setResult(data as any);
       toast({ title: "Success", description: "Briefing generated successfully." });
     } catch (error) {
+      console.error(error);
       toast({ variant: "destructive", title: "Error", description: "Failed to generate briefing." });
     } finally {
       setLoading(false);

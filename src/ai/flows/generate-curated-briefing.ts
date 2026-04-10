@@ -2,8 +2,6 @@
 /**
  * @fileOverview A Genkit flow for generating various types of curated news briefings
  *               based on user-defined criteria and a list of articles.
- *
- * - generateCuratedBriefing - A function that handles the briefing generation process.
  */
 
 import { ai } from '@/ai/genkit';
@@ -64,7 +62,6 @@ const BriefingResultOutputSchema = z.object({
   whatChanged: z.string().optional(),
 });
 
-// Types for the wrapper function (TypeScript types are fine to export)
 export type BriefingResultOutput = z.infer<typeof BriefingResultOutputSchema>;
 export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
 
@@ -74,24 +71,30 @@ const generateCuratedBriefingPrompt = ai.definePrompt({
   name: 'generateCuratedBriefingPrompt',
   input: { schema: GenerateCuratedBriefingInputSchema },
   output: { schema: BriefingResultOutputSchema },
-  prompt: `You are an expert news analyst and briefing generator. Your task is to create a professional news briefing in the language: \"{{{language}}}\".
-
-IMPORTANT: You will receive articles in different languages (e.g., English, German). You MUST translate ALL relevant information into \"{{{language}}}\" for the final briefing.
+  prompt: `You are an expert news analyst and briefing generator for a professional audience. Your task is to create a comprehensive and concise news briefing in the target language: \"{{{language}}}\".
 
 Strictly adhere to the following rules:
 - **Language**: The entire briefing (titles, summaries, analysis) MUST be in \"{{{language}}}\".
-- **Source Translation**: If an article is in German but the output is English, translate it. If it is in English but the output is German, translate it.
-- **Conciseness**: Summaries must be original and highly condensed.
+- **Summaries**: Summaries must be original and highly concise. Never reproduce full articles.
 - **Accuracy**: Only use information from the provided articles.
 - **Relevance**: Prioritize content related to categories: {{{categories}}} and regions: {{{regions}}}.
 - **Context**: Focus on events within the timeframe: \"{{{timeframe}}}\". Note: Today's date is ${new Date().toLocaleDateString()}.
 
 The desired briefing type is: \"{{{briefingType}}}\". Follow these structural requirements:
 
-1.  **\"Ultra Short Update\"**: Only \`mainTitle\` and \`overviewParagraph\`.
-2.  **\"Short Update\"**: \`mainTitle\`, \`overviewParagraph\`, and 1-2 brief \`sections\`.
-3.  **\"Morning Briefing\"**: \`mainTitle\`, \`overviewParagraph\`, structured \`sections\` by category, and \`eventClusters\`.
-4.  **\"Executive Summary\"**: Detailed \`mainTitle\`, analytical \`overviewParagraph\`, deep \`sections\`, and comprehensive \`eventClusters\`.
+1.  **\"Ultra Short Update\"**:
+    - Provide only a \`mainTitle\` and an \`overviewParagraph\`.
+    - Omit \`sections\`, \`eventClusters\`, \`whyMarketsCare\`, and \`whatChanged\`.
+
+2.  **\"Short Update\"**:
+    - Provide a \`mainTitle\`, \`overviewParagraph\`, and 1-2 brief \`sections\`.
+    - Omit \`eventClusters\`.
+
+3.  **\"Morning Briefing\"**:
+    - Provide a \`mainTitle\`, \`overviewParagraph\`, structured \`sections\` by category, and \`eventClusters\`.
+
+4.  **\"Executive Summary\"**:
+    - Detailed \`mainTitle\`, analytical \`overviewParagraph\`, deep \`sections\`, and comprehensive \`eventClusters\`.
 
 {{#if includeMarketInsights}}
 **Instruction for \"Why markets care\":** Explain the financial/economic impact of this news in \"{{{language}}}\".
@@ -102,12 +105,12 @@ The desired briefing type is: \"{{{briefingType}}}\". Follow these structural re
 {{/if}}
 
 Output Structure:
-Provide a single JSON object. Ensure all string fields are valid JSON.
+Provide a single JSON object.
 
 Here are the articles to process:
 
 {{#each articles}}
---- Article (ID: {{this.id}}, Source: {{this.sourceName}}, Region: {{this.region}}, Category: {{this.category}}, Published: {{this.publicationDate}}) ---
+--- Article (ID: {{this.id}}, Source: {{this.sourceName}}, Published: {{this.publicationDate}}) ---
 Title: {{this.title}}
 Content:
 {{{this.content}}}
@@ -128,11 +131,9 @@ const generateCuratedBriefingFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await generateCuratedBriefingPrompt(input);
-
     if (!output) {
       throw new Error('Failed to generate briefing output.');
     }
-
     return output;
   }
 );

@@ -7,12 +7,12 @@
   "theme_color": "#111111",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/icon192/192/192",
+      "src": "https://picsum.photos/seed/192/192/192",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://picsum.photos/seed/icon512/512/512",
+      "src": "https://picsum.photos/seed/512/512/512",
       "sizes": "512x512",
       "type": "image/png"
     }
