@@ -42,9 +42,13 @@ export function BriefingDashboard() {
       const data = await generateCuratedBriefingAction(params);
       setResult(data as any);
       toast({ title: "Success", description: "Briefing generated successfully." });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to generate briefing." });
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: error.message || "Failed to generate briefing." 
+      });
     } finally {
       setLoading(false);
     }

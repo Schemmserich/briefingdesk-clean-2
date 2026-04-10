@@ -5,9 +5,7 @@ import { MOCK_ARTICLES } from "@/lib/mock-data";
 import { BriefingRequest } from "@/lib/types";
 
 export async function generateCuratedBriefingAction(params: BriefingRequest) {
-  // Instead of strict pre-filtering, we pass all relevant enabled articles
-  // and let the AI perform the final categorization and region matching
-  // This ensures that "all sources" are considered even if metadata is slightly off.
+  // Pass relevant articles to the AI
   const flowArticles = MOCK_ARTICLES.map(art => ({
     id: art.id,
     title: art.title,
@@ -21,12 +19,12 @@ export async function generateCuratedBriefingAction(params: BriefingRequest) {
   }));
 
   const input: GenerateCuratedBriefingInput = {
-    language: params.language as 'en' | 'de',
+    language: params.language,
     timeframe: params.timeframe,
     categories: params.categories,
     regions: params.regions,
     articles: flowArticles,
-    briefingType: params.briefingType as any,
+    briefingType: params.briefingType,
     includeMarketInsights: params.includeMarketInsights,
     includeChangeAnalysis: params.includeChangeAnalysis,
   };
@@ -39,8 +37,9 @@ export async function generateCuratedBriefingAction(params: BriefingRequest) {
       timestamp: new Date().toISOString(),
       request: params,
     };
-  } catch (error) {
-    console.error("Briefing Generation Error:", error);
-    throw new Error("Failed to generate briefing result.");
+  } catch (error: any) {
+    console.error("Briefing Generation Error Detail:", error);
+    // Provide a more descriptive error if possible
+    throw new Error(`Briefing generation failed: ${error.message || "Unknown error"}`);
   }
 }

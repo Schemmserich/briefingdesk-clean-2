@@ -6,7 +6,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Internal schemas (not exported to comply with 'use server' restrictions)
+// Internal schemas (NOT exported to comply with 'use server' restrictions)
 const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -67,24 +67,24 @@ const generateCuratedBriefingPrompt = ai.definePrompt({
   name: 'generateCuratedBriefingPrompt',
   input: { schema: GenerateCuratedBriefingInputSchema },
   output: { schema: BriefingResultOutputSchema },
-  prompt: `You are an expert news analyst and briefing generator. Create a concise briefing in "{{language}}".
+  prompt: `You are an expert news analyst and briefing generator for a professional audience. Create a comprehensive and concise news briefing in "{{language}}".
 
 Strictly adhere to these rules:
-- Summaries must be original and highly concise.
-- Clearly distinguish factual reporting from analysis.
-- The language for the entire briefing output MUST be in: "{{language}}".
+- **Summaries must be original and highly concise.** Never reproduce full copyrighted articles or long excerpts.
+- **Clearly distinguish factual reporting from analysis.**
+- **The language for the entire briefing output MUST be in: "{{language}}"**.
 - Focus on timeframe: "{{timeframe}}".
 - Prioritize categories: {{#each categories}}{{this}}, {{/each}} and regions: {{#each regions}}{{this}}, {{/each}}.
 
-Desired type: "{{briefingType}}".
-Requirements:
-1. "Ultra Short Update": Only \`mainTitle\` and \`overviewParagraph\`.
-2. "Short Update": \`mainTitle\`, \`overviewParagraph\`, and 1-2 brief \`sections\`.
-3. "Morning Briefing": \`mainTitle\`, \`overviewParagraph\`, \`sections\`, and \`eventClusters\`.
-4. "Executive Summary": Detailed \`mainTitle\`, analytical \`overviewParagraph\`, deep \`sections\`, and \`eventClusters\`.
+Desired briefing type: "{{briefingType}}".
+Instructions:
+1. **"Ultra Short Update"**: Only \`mainTitle\` and \`overviewParagraph\`.
+2. **"Short Update"**: \`mainTitle\`, \`overviewParagraph\`, and 1-2 brief \`sections\`.
+3. **"Morning Briefing"**: \`mainTitle\`, \`overviewParagraph\`, \`sections\`, and \`eventClusters\`.
+4. **"Executive Summary"**: Detailed \`mainTitle\`, analytical \`overviewParagraph\`, deep \`sections\`, and \`eventClusters\`.
 
-{{#if includeMarketInsights}}Instruction: Explain financial impact in "{{language}}".{{/if}}
-{{#if includeChangeAnalysis}}Instruction: Highlight what changed in "{{language}}".{{/if}}
+{{#if includeMarketInsights}}Instruction: Generate a "Why markets care" analysis in "{{language}}".{{/if}}
+{{#if includeChangeAnalysis}}Instruction: Highlight "What changed in this window" in "{{language}}".{{/if}}
 
 Articles:
 {{#each articles}}
