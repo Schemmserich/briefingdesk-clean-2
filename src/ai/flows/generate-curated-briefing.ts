@@ -75,7 +75,7 @@ Strictly adhere to these rules:
 - **Clearly distinguish factual reporting from analysis.**
 - **The language for the entire briefing output MUST be in: "{{language}}"**.
 - Focus on timeframe: "{{timeframe}}".
-- Prioritize categories: {{#each categories}}{{this}}, {{/each}} and regions: {{#each regions}}{{this}}, {{/each}}.
+- Prioritize categories: {{#each categories}}{{{this}}}, {{/each}} and regions: {{#each regions}}{{{this}}}, {{/each}}.
 
 Desired briefing type: "{{briefingType}}".
 Instructions:
@@ -89,8 +89,8 @@ Instructions:
 
 Articles:
 {{#each articles}}
---- Article ({{this.sourceName}}) ---
-Title: {{this.title}}
+--- Article ({{{this.sourceName}}}) ---
+Title: {{{this.title}}}
 Content: {{{this.content}}}
 ---
 {{/each}}`
