@@ -6,7 +6,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Internal schemas (NOT exported to comply with 'use server' restrictions)
+// Internal schemas - NOT exported to comply with Next.js 'use server' restrictions
 const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -60,6 +60,7 @@ const BriefingResultOutputSchema = z.object({
   whatChanged: z.string().optional(),
 });
 
+// Exported types for client use
 export type BriefingResultOutput = z.infer<typeof BriefingResultOutputSchema>;
 export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
 

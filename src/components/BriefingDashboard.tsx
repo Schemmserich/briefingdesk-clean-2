@@ -44,10 +44,13 @@ export function BriefingDashboard() {
       toast({ title: "Success", description: "Briefing generated successfully." });
     } catch (error: any) {
       console.error(error);
+      const isUnavailable = error.message?.includes("503") || error.message?.includes("high demand");
       toast({ 
         variant: "destructive", 
-        title: "Error", 
-        description: error.message || "Failed to generate briefing." 
+        title: isUnavailable ? "AI High Demand" : "Error", 
+        description: isUnavailable 
+          ? "The AI is currently under high load. Please wait a few seconds and try again." 
+          : (error.message || "Failed to generate briefing.") 
       });
     } finally {
       setLoading(false);
