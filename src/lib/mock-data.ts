@@ -16,7 +16,7 @@ export const MOCK_ARTICLES: Article[] = [
     sourceName: 'The Guardian',
     publicationDate: new Date().toISOString(),
     region: 'Global',
-    category: 'Economy',
+    category: 'Stock Markets',
     url: 'https://example.com/art1',
     content: 'Stock markets across the globe reached record highs today as major tech companies reported stronger-than-expected quarterly earnings. Investors are optimistic about AI-driven growth.',
     trustScore: 85
@@ -34,36 +34,36 @@ export const MOCK_ARTICLES: Article[] = [
   },
   {
     id: 'art-3',
-    title: 'European Union Proposes New Tech Regulation',
-    sourceName: 'BBC News',
+    title: 'Quantum Computing Breakthrough at MIT',
+    sourceName: 'Science Daily',
     publicationDate: new Date().toISOString(),
-    region: 'Europe',
-    category: 'Politics',
+    region: 'North America',
+    category: 'Science',
     url: 'https://example.com/art3',
-    content: 'The EU Commission has unveiled a sweeping new framework for regulating generative AI models, focusing on transparency and ethical deployment across member states.',
+    content: 'Researchers at MIT have achieved a new level of quantum coherence in a solid-state system, paving the way for more stable quantum bits and scalable processors.',
     trustScore: 90
   },
   {
     id: 'art-4',
-    title: 'Bundestag debates energy transition',
-    sourceName: 'ZDF heute',
+    title: 'SpaceX Successfully Launches Next-Gen Starlink',
+    sourceName: 'Space News',
     publicationDate: new Date().toISOString(),
-    region: 'Europe',
-    category: 'Politics',
+    region: 'Global',
+    category: 'Science',
     url: 'https://example.com/art4',
-    content: 'German lawmakers are meeting today to discuss the acceleration of the country\'s energy transition, with a focus on offshore wind and grid stability.',
+    content: 'SpaceX launched another batch of Starlink satellites, this time featuring direct-to-cell capabilities that promise to end mobile dead zones globally.',
     trustScore: 88
   },
   {
     id: 'art-5',
-    title: 'Tech Giants See Green as Earnings Beat Estimates',
-    sourceName: 'CNN',
+    title: 'Nvidia Stock Surges as AI Demand Peaks',
+    sourceName: 'Financial Times',
     publicationDate: new Date().toISOString(),
     region: 'Global',
-    category: 'Economy',
+    category: 'Stock Markets',
     url: 'https://example.com/art5',
-    content: 'Market leaders in the technology sector are seeing massive gains today after reporting earnings that blew past analyst expectations. The focus remains on AI development.',
-    trustScore: 75
+    content: 'Nvidia shares climbed another 5% today following reports of unprecedented demand for its latest Blackwell chips among hyperscale cloud providers.',
+    trustScore: 95
   }
 ];
 
@@ -72,8 +72,8 @@ export const DEFAULT_PRESETS: UserPreset[] = [
     id: 'preset-morning',
     name: 'Morning Preset',
     language: 'en',
-    timeframe: 'today',
-    categories: ['Politics', 'Economy'],
+    timeframe: '24h',
+    categories: ['Politics', 'Economy', 'Stock Markets'],
     regions: ['Global', 'Europe'],
     briefingType: 'Morning Briefing',
     includeMarketInsights: true,

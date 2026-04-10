@@ -27,9 +27,11 @@ export const i18n = {
     loading: 'Processing latest intelligence...',
     selectPlaceholder: 'Select...',
     timeframes: {
-      last24h: 'Last 24 Hours',
-      today: 'Today',
-      thisWeek: 'This Week',
+      '2h': 'Last 2 Hours',
+      '4h': 'Last 4 Hours',
+      '8h': 'Last 8 Hours',
+      '12h': 'Last 12 Hours',
+      '24h': 'Last 24 Hours',
     },
     briefingTypes: {
       ultra: 'Ultra Short Update',
@@ -66,9 +68,11 @@ export const i18n = {
     loading: 'Analysiere aktuelle Nachrichten...',
     selectPlaceholder: 'Auswählen...',
     timeframes: {
-      last24h: 'Letzte 24 Stunden',
-      today: 'Heute',
-      thisWeek: 'Diese Woche',
+      '2h': 'Letzte 2 Stunden',
+      '4h': 'Letzte 4 Stunden',
+      '8h': 'Letzte 8 Stunden',
+      '12h': 'Letzte 12 Stunden',
+      '24h': 'Letzte 24 Stunden',
     },
     briefingTypes: {
       ultra: 'Ultra Short Update',

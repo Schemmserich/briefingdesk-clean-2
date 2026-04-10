@@ -4,14 +4,12 @@
  *               based on user-defined criteria and a list of articles.
  *
  * - generateCuratedBriefing - A function that handles the briefing generation process.
- * - GenerateCuratedBriefingInput - The input type for the generateCuratedBriefing function.
- * - BriefingResultOutput - The return type for the generateCuratedBriefing function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// --- Production-Ready Data Models (Schemas) ---
+// --- Internal Data Models (Not exported to avoid "use server" constraints) ---
 
 const ArticleSchema = z.object({
   id: z.string().describe('Unique identifier for the article.'),
@@ -27,7 +25,6 @@ const ArticleSchema = z.object({
   canonicalHash: z.string().optional().describe('A hash used for duplicate detection.'),
   trustScore: z.number().min(0).max(100).optional().describe('Trust score of the source (0-100).'),
 });
-export type Article = z.infer<typeof ArticleSchema>;
 
 const SupportingSourceSchema = z.object({
   title: z.string().describe('Title of the supporting article.'),
@@ -35,16 +32,12 @@ const SupportingSourceSchema = z.object({
   sourceName: z.string().describe('Name of the news source.'),
   publicationDate: z.string().datetime().describe('Publication date of the supporting article.'),
 });
-export type SupportingSource = z.infer<typeof SupportingSourceSchema>;
 
 const EventClusterSchema = z.object({
   title: z.string().describe('A concise title for the event cluster.'),
   summary: z.string().describe('A summary of the clustered event, integrating information from multiple sources.'),
   supportingSources: z.array(SupportingSourceSchema).describe('List of articles that support this event cluster.'),
 });
-export type EventCluster = z.infer<typeof EventClusterSchema>;
-
-// --- Input and Output Schemas for the Flow ---
 
 const GenerateCuratedBriefingInputSchema = z.object({
   language: z.enum(['en', 'de']).describe('The desired language for the briefing output.'),
@@ -56,7 +49,6 @@ const GenerateCuratedBriefingInputSchema = z.object({
   includeMarketInsights: z.boolean().optional().describe('If true, include a "Why markets care" section.'),
   includeChangeAnalysis: z.boolean().optional().describe('If true, include a "What changed in this window" section.'),
 });
-export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
 
 const BriefingResultOutputSchema = z.object({
   mainTitle: z.string().describe('The main title of the briefing.'),
@@ -66,11 +58,17 @@ const BriefingResultOutputSchema = z.object({
   sections: z.array(z.object({
     title: z.string().describe('Title of the section (e.g., "Key Political Developments").'),
     content: z.string().describe('Content of the section, summarizing events within that category.'),
-  })).optional().describe('Detailed sections, typically by category, for more in-depth briefings. Only included for Morning Briefing and Executive Summary.'),
-  eventClusters: z.array(EventClusterSchema).optional().describe('Groups of related articles forming distinct event clusters, for detailed briefings. Only included for Morning Briefing and Executive Summary.'),
-  whyMarketsCare: z.string().optional().describe('An optional analytical section explaining the potential impact of the reported news on global or specific markets. Only included if `includeMarketInsights` is true and briefing type is Morning Briefing or Executive Summary.'),
-  whatChanged: z.string().optional().describe('An optional analytical section highlighting key developments or shifts compared to previous reporting, indicating how the situation has evolved within the given timeframe. Only included if `includeChangeAnalysis` is true and briefing type is Morning Briefing or Executive Summary.'),
+  })).optional().describe('Detailed sections, typically by category, for more in-depth briefings.'),
+  eventClusters: z.array(EventClusterSchema).optional().describe('Groups of related articles forming distinct event clusters.'),
+  whyMarketsCare: z.string().optional().describe('An optional analytical section explaining the potential impact of the reported news on global or specific markets.'),
+  whatChanged: z.string().optional().describe('An optional analytical section highlighting key developments or shifts compared to previous reporting.'),
 });
+
+// --- Exports Types ---
+export type Article = z.infer<typeof ArticleSchema>;
+export type SupportingSource = z.infer<typeof SupportingSourceSchema>;
+export type EventCluster = z.infer<typeof EventClusterSchema>;
+export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
 export type BriefingResultOutput = z.infer<typeof BriefingResultOutputSchema>;
 
 // --- Genkit Prompt Definition ---

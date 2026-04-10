@@ -12,8 +12,9 @@ import { BriefingDisplay } from "./BriefingDisplay";
 import { generateCuratedBriefingAction } from "@/app/actions/briefing";
 import { Loader2, Zap, Save, Calendar, Globe, Layers, Settings2, Newspaper } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
-const categories = ["Politics", "Economy", "Technology", "Health", "Climate"];
+const categories = ["Politics", "Economy", "Stock Markets", "Technology", "Science", "Health", "Climate"];
 const regions = ["Global", "Europe", "North America", "Asia", "ME&A"];
 
 export function BriefingDashboard() {
@@ -24,8 +25,8 @@ export function BriefingDashboard() {
 
   const [params, setParams] = useState<BriefingRequest>({
     language: "en",
-    timeframe: "today",
-    categories: ["Politics", "Economy"],
+    timeframe: "24h",
+    categories: ["Politics", "Economy", "Stock Markets"],
     regions: ["Global"],
     briefingType: "Morning Briefing",
     includeMarketInsights: true,
@@ -235,8 +236,4 @@ export function BriefingDashboard() {
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(" ");
 }
