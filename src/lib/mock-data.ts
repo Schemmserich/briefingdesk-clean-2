@@ -10,6 +10,9 @@ export const MOCK_SOURCES: SourceConfig[] = [
   { id: '4', name: 'ZDF heute', baseUrl: 'https://zdf.de', region: 'Europe', category: 'General', isEnabled: true, isPremium: false, trustScore: 88, mode: 'normal' },
   { id: '5', name: 'CNN', baseUrl: 'https://cnn.com', region: 'North America', category: 'Politics', isEnabled: true, isPremium: false, trustScore: 75, mode: 'normal' },
   { id: '6', name: 'Financial Times', baseUrl: 'https://ft.com', region: 'Global', category: 'Economy', isEnabled: true, isPremium: true, trustScore: 95, mode: 'metadata-only' },
+  { id: '7', name: 'CNBC', baseUrl: 'https://cnbc.com', region: 'North America', category: 'Stock Markets', isEnabled: true, isPremium: false, trustScore: 82, mode: 'normal' },
+  { id: '8', name: 'Handelsblatt', baseUrl: 'https://handelsblatt.com', region: 'Europe', category: 'Economy', isEnabled: true, isPremium: true, trustScore: 91, mode: 'normal' },
+  { id: '9', name: 'Frankfurter Allgemeine', baseUrl: 'https://faz.net', region: 'Europe', category: 'Politics', isEnabled: true, isPremium: false, trustScore: 89, mode: 'normal' },
 ];
 
 export const MOCK_ARTICLES: Article[] = [
@@ -36,6 +39,39 @@ export const MOCK_ARTICLES: Article[] = [
     trustScore: 92
   },
   {
+    id: 'art-c1',
+    title: 'S&P 500 hits new intraday record',
+    sourceName: 'CNBC',
+    publicationDate: hoursAgo(0.7),
+    region: 'North America',
+    category: 'Stock Markets',
+    url: 'https://example.com/cnbc1',
+    content: 'The S&P 500 rose on Wednesday to hit a new all-time intraday high as the latest batch of corporate earnings fueled the ongoing stock market rally.',
+    trustScore: 82
+  },
+  {
+    id: 'art-h1',
+    title: 'Deutscher Export überrascht mit deutlichem Plus',
+    sourceName: 'Handelsblatt',
+    publicationDate: hoursAgo(2.5),
+    region: 'Europe',
+    category: 'Economy',
+    url: 'https://example.com/hb1',
+    content: 'Trotz globaler Unsicherheiten konnten die deutschen Exporteure im vergangenen Monat deutlich zulegen. Vor allem das Geschäft mit China und den USA zog kräftig an.',
+    trustScore: 91
+  },
+  {
+    id: 'art-f1',
+    title: 'Regierung einigt sich auf neuen Klimaplan',
+    sourceName: 'Frankfurter Allgemeine',
+    publicationDate: hoursAgo(3.2),
+    region: 'Europe',
+    category: 'Politics',
+    url: 'https://example.com/faz1',
+    content: 'Nach wochenlangen Verhandlungen hat die Bundesregierung einen Kompromiss für das neue Klimaschutzgesetz gefunden. Ziel ist eine beschleunigte Reduktion der Emissionen bis 2030.',
+    trustScore: 89
+  },
+  {
     id: 'art-6',
     title: 'DAX erreicht Rekordhoch trotz Konjunktursorgen',
     sourceName: 'ZDF heute',
@@ -56,28 +92,6 @@ export const MOCK_ARTICLES: Article[] = [
     url: 'https://example.com/art3',
     content: 'Researchers at MIT have achieved a new level of quantum coherence in a solid-state system, paving the way for more stable quantum bits and scalable processors.',
     trustScore: 90
-  },
-  {
-    id: 'art-4',
-    title: 'SpaceX Successfully Launches Next-Gen Starlink',
-    sourceName: 'Space News',
-    publicationDate: hoursAgo(4),
-    region: 'Global',
-    category: 'Science',
-    url: 'https://example.com/art4',
-    content: 'SpaceX launched another batch of Starlink satellites, this time featuring direct-to-cell capabilities that promise to end mobile dead zones globally.',
-    trustScore: 88
-  },
-  {
-    id: 'art-5',
-    title: 'Nvidia Stock Surges as AI Demand Peaks',
-    sourceName: 'Financial Times',
-    publicationDate: hoursAgo(5),
-    region: 'Global',
-    category: 'Stock Markets',
-    url: 'https://example.com/art5',
-    content: 'Nvidia shares climbed another 5% today following reports of unprecedented demand for its latest Blackwell chips among hyperscale cloud providers.',
-    trustScore: 95
   }
 ];
 
