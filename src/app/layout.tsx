@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 export const metadata: Metadata = {
   title: 'BriefingDesk | Intelligent News Curation',
   description: 'AI-powered professional news briefing platform.',
+  manifest: '/manifest.json'
 };
 
 export default function RootLayout({
