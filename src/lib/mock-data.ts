@@ -1,5 +1,8 @@
 import { Article, SourceConfig, UserPreset } from './types';
 
+// Helper to get ISO string for "N hours ago"
+const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
+
 export const MOCK_SOURCES: SourceConfig[] = [
   { id: '1', name: 'The Guardian', baseUrl: 'https://theguardian.com', region: 'Global', category: 'General', isEnabled: true, isPremium: false, trustScore: 85, mode: 'normal' },
   { id: '2', name: 'New York Times', baseUrl: 'https://nytimes.com', region: 'North America', category: 'General', isEnabled: true, isPremium: true, trustScore: 92, mode: 'normal' },
@@ -14,7 +17,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: 'art-1',
     title: 'Global Markets Rally on Tech Earnings',
     sourceName: 'The Guardian',
-    publicationDate: new Date().toISOString(),
+    publicationDate: hoursAgo(0.5),
     region: 'Global',
     category: 'Stock Markets',
     url: 'https://example.com/art1',
@@ -25,7 +28,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: 'art-2',
     title: 'Fed Signals Potential Rate Cut in Q3',
     sourceName: 'New York Times',
-    publicationDate: new Date().toISOString(),
+    publicationDate: hoursAgo(1.5),
     region: 'North America',
     category: 'Economy',
     url: 'https://example.com/art2',
@@ -36,7 +39,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: 'art-6',
     title: 'DAX erreicht Rekordhoch trotz Konjunktursorgen',
     sourceName: 'ZDF heute',
-    publicationDate: new Date().toISOString(),
+    publicationDate: hoursAgo(2),
     region: 'Europe',
     category: 'Stock Markets',
     url: 'https://example.com/art6',
@@ -47,7 +50,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: 'art-3',
     title: 'Quantum Computing Breakthrough at MIT',
     sourceName: 'Science Daily',
-    publicationDate: new Date().toISOString(),
+    publicationDate: hoursAgo(3),
     region: 'North America',
     category: 'Science',
     url: 'https://example.com/art3',
@@ -58,7 +61,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: 'art-4',
     title: 'SpaceX Successfully Launches Next-Gen Starlink',
     sourceName: 'Space News',
-    publicationDate: new Date().toISOString(),
+    publicationDate: hoursAgo(4),
     region: 'Global',
     category: 'Science',
     url: 'https://example.com/art4',
@@ -69,7 +72,7 @@ export const MOCK_ARTICLES: Article[] = [
     id: 'art-5',
     title: 'Nvidia Stock Surges as AI Demand Peaks',
     sourceName: 'Financial Times',
-    publicationDate: new Date().toISOString(),
+    publicationDate: hoursAgo(5),
     region: 'Global',
     category: 'Stock Markets',
     url: 'https://example.com/art5',

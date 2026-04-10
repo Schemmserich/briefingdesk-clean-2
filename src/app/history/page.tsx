@@ -4,10 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { History, Calendar, Star, Trash2, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Helper to generate dynamic recent dates
+const getRecentDate = (daysAgo: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString();
+};
+
 const mockHistory = [
-  { id: '1', title: 'Morning Markets Update', type: 'Executive Summary', date: '2024-05-20T08:30:00Z', lang: 'en' },
-  { id: '2', title: 'Tech Regulation Brief', type: 'Short Update', date: '2024-05-19T14:20:00Z', lang: 'en' },
-  { id: '3', title: 'Global Energy Pulse', type: 'Morning Briefing', date: '2024-05-18T09:15:00Z', lang: 'de' },
+  { id: '1', title: 'Morning Markets Update', type: 'Executive Summary', date: getRecentDate(0), lang: 'en' },
+  { id: '2', title: 'Tech Regulation Brief', type: 'Short Update', date: getRecentDate(1), lang: 'en' },
+  { id: '3', title: 'Global Energy Pulse', type: 'Morning Briefing', date: getRecentDate(2), lang: 'de' },
 ];
 
 export default function HistoryPage() {

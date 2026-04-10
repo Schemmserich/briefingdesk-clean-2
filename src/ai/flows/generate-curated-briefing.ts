@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// --- Internal Data Models ---
+// --- Internal Data Models (Not exported to comply with 'use server' restrictions) ---
 
 const ArticleSchema = z.object({
   id: z.string(),
@@ -64,11 +64,9 @@ const BriefingResultOutputSchema = z.object({
   whatChanged: z.string().optional(),
 });
 
-export type Article = z.infer<typeof ArticleSchema>;
-export type SupportingSource = z.infer<typeof SupportingSourceSchema>;
-export type EventCluster = z.infer<typeof EventClusterSchema>;
-export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
+// Types for the wrapper function
 export type BriefingResultOutput = z.infer<typeof BriefingResultOutputSchema>;
+export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
 
 // --- Genkit Prompt Definition ---
 
@@ -86,7 +84,7 @@ Strictly adhere to the following rules:
 - **Conciseness**: Summaries must be original and highly condensed.
 - **Accuracy**: Only use information from the provided articles.
 - **Relevance**: Prioritize content related to categories: {{{categories}}} and regions: {{{regions}}}.
-- **Context**: Focus on events within the timeframe: \"{{{timeframe}}}\".
+- **Context**: Focus on events within the timeframe: \"{{{timeframe}}}\". Note: Today's date is ${new Date().toLocaleDateString()}.
 
 The desired briefing type is: \"{{{briefingType}}}\". Follow these structural requirements:
 
@@ -109,7 +107,7 @@ Provide a single JSON object. Ensure all string fields are valid JSON.
 Here are the articles to process:
 
 {{#each articles}}
---- Article (ID: {{this.id}}, Source: {{this.sourceName}}, Region: {{this.region}}, Category: {{this.category}}) ---
+--- Article (ID: {{this.id}}, Source: {{this.sourceName}}, Region: {{this.region}}, Category: {{this.category}}, Published: {{this.publicationDate}}) ---
 Title: {{this.title}}
 Content:
 {{{this.content}}}

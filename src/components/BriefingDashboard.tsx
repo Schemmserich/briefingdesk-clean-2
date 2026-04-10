@@ -26,7 +26,7 @@ export function BriefingDashboard() {
   const [params, setParams] = useState<BriefingRequest>({
     language: "en",
     timeframe: "24h",
-    categories: ["Politics", "Economy", "Stock Markets"],
+    categories: ["Politics", "Economy", "Stock Markets", "Science"],
     regions: ["Global"],
     briefingType: "Morning Briefing",
     includeMarketInsights: true,
