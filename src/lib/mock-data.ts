@@ -12,6 +12,7 @@ export const MOCK_SOURCES: SourceConfig[] = [
   { id: '6', name: 'Financial Times', baseUrl: 'https://ft.com', region: 'Global', category: 'Economy', isEnabled: true, isPremium: true, trustScore: 95, mode: 'metadata-only' },
   { id: '7', name: 'Handelsblatt', baseUrl: 'https://handelsblatt.com', region: 'Europe', category: 'Economy', isEnabled: true, isPremium: true, trustScore: 91, mode: 'normal' },
   { id: '8', name: 'Frankfurter Allgemeine', baseUrl: 'https://faz.net', region: 'Europe', category: 'Politics', isEnabled: true, isPremium: false, trustScore: 89, mode: 'normal' },
+  { id: '9', name: 'CNBC News', baseUrl: 'https://cnbc.com/news', region: 'Global', category: 'General', isEnabled: true, isPremium: false, trustScore: 85, mode: 'normal' },
 ];
 
 export const MOCK_ARTICLES: Article[] = [
