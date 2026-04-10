@@ -7,11 +7,8 @@ import { z } from 'genkit';
  * @fileOverview A Genkit flow for grouping related articles into event clusters.
  *
  * - groupArticlesIntoEventClusters - A function that handles the grouping of articles into event clusters.
- * - GroupArticlesIntoEventClustersInput - The input type for the groupArticlesIntoEventClusters function.
- * - GroupArticlesIntoEventClustersOutput - The return type for the groupArticlesIntoEventClusters function.
  */
 
-// Define ArticleSchema based on project requirements for production-ready data models.
 const ArticleSchema = z.object({
   id: z.string().describe('Unique identifier for the article.'),
   title: z.string().describe('The title of the article.'),
@@ -24,9 +21,7 @@ const ArticleSchema = z.object({
   canonicalHash: z.string().describe('A hash used to identify duplicate articles.'),
   trustScore: z.number().min(0).max(100).describe('A trust score for the source (0-100).'),
 });
-export type Article = z.infer<typeof ArticleSchema>;
 
-// Define EventClusterSchema for grouping related articles.
 const EventClusterSchema = z.object({
   id: z.string().describe('A unique identifier for the event cluster.'),
   title: z.string().describe('A concise, descriptive title for the event cluster.'),
@@ -37,24 +32,18 @@ const EventClusterSchema = z.object({
     ),
   articles: z.array(ArticleSchema).describe('The list of articles belonging to this cluster.'),
 });
-export type EventCluster = z.infer<typeof EventClusterSchema>;
 
 const GroupArticlesIntoEventClustersInputSchema = z.object({
   articles: z.array(ArticleSchema).describe('An array of articles to be grouped into event clusters.'),
 });
-export type GroupArticlesIntoEventClustersInput = z.infer<typeof GroupArticlesIntoEventClustersInputSchema>;
 
 const GroupArticlesIntoEventClustersOutputSchema = z.array(EventClusterSchema).describe('An array of event clusters, each containing related articles.');
+
+export type Article = z.infer<typeof ArticleSchema>;
+export type EventCluster = z.infer<typeof EventClusterSchema>;
+export type GroupArticlesIntoEventClustersInput = z.infer<typeof GroupArticlesIntoEventClustersInputSchema>;
 export type GroupArticlesIntoEventClustersOutput = z.infer<typeof GroupArticlesIntoEventClustersOutputSchema>;
 
-// Exported wrapper function to call the Genkit flow.
-export async function groupArticlesIntoEventClusters(
-  input: GroupArticlesIntoEventClustersInput
-): Promise<GroupArticlesIntoEventClustersOutput> {
-  return groupArticlesIntoEventClustersFlow(input);
-}
-
-// Define the Genkit prompt for grouping articles.
 const groupingPrompt = ai.definePrompt({
   name: 'groupingArticlesPrompt',
   input: {
@@ -81,7 +70,6 @@ Here are the articles in JSON format:
 {{{articlesJson}}}`,
 });
 
-// Define the Genkit flow to orchestrate the article grouping.
 const groupArticlesIntoEventClustersFlow = ai.defineFlow(
   {
     name: 'groupArticlesIntoEventClustersFlow',
@@ -89,9 +77,7 @@ const groupArticlesIntoEventClustersFlow = ai.defineFlow(
     outputSchema: GroupArticlesIntoEventClustersOutputSchema,
   },
   async (input) => {
-    // Serialize the articles array into a JSON string to pass to the prompt.
     const articlesJson = JSON.stringify(input.articles, null, 2);
-
     const { output } = await groupingPrompt({ articlesJson });
 
     if (!output) {
@@ -101,3 +87,9 @@ const groupArticlesIntoEventClustersFlow = ai.defineFlow(
     return output;
   }
 );
+
+export async function groupArticlesIntoEventClusters(
+  input: GroupArticlesIntoEventClustersInput
+): Promise<GroupArticlesIntoEventClustersOutput> {
+  return groupArticlesIntoEventClustersFlow(input);
+}

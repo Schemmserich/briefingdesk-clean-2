@@ -64,7 +64,7 @@ const BriefingResultOutputSchema = z.object({
   whatChanged: z.string().optional(),
 });
 
-// Types for the wrapper function
+// Types for the wrapper function (TypeScript types are fine to export)
 export type BriefingResultOutput = z.infer<typeof BriefingResultOutputSchema>;
 export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
 
