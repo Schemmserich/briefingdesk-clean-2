@@ -33,6 +33,17 @@ export const MOCK_ARTICLES: Article[] = [
     trustScore: 92
   },
   {
+    id: 'art-6',
+    title: 'DAX erreicht Rekordhoch trotz Konjunktursorgen',
+    sourceName: 'ZDF heute',
+    publicationDate: new Date().toISOString(),
+    region: 'Europe',
+    category: 'Stock Markets',
+    url: 'https://example.com/art6',
+    content: 'Der deutsche Leitindex DAX hat heute trotz anhaltender Sorgen um die Binnennachfrage ein neues Allzeithoch erreicht. Analysten führen dies auf die starken Exportzahlen der Automobilindustrie zurück.',
+    trustScore: 88
+  },
+  {
     id: 'art-3',
     title: 'Quantum Computing Breakthrough at MIT',
     sourceName: 'Science Daily',

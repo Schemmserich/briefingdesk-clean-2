@@ -2,19 +2,13 @@
 
 import { generateCuratedBriefing, GenerateCuratedBriefingInput } from "@/ai/flows/generate-curated-briefing";
 import { MOCK_ARTICLES } from "@/lib/mock-data";
-import { BriefingRequest, Article } from "@/lib/types";
+import { BriefingRequest } from "@/lib/types";
 
 export async function generateCuratedBriefingAction(params: BriefingRequest) {
-  // Filter mock articles based on request parameters
-  const filteredArticles = MOCK_ARTICLES.filter(art => {
-    const regionMatch = params.regions.includes("Global") || params.regions.includes(art.region);
-    const categoryMatch = params.categories.length === 0 || params.categories.includes(art.category);
-    return regionMatch && categoryMatch;
-  });
-
-  // Prepare input for Genkit flow
-  // Note: generateCuratedBriefing flow expects its specific Article model
-  const flowArticles = filteredArticles.map(art => ({
+  // Instead of strict pre-filtering, we pass all relevant enabled articles
+  // and let the AI perform the final categorization and region matching
+  // This ensures that "all sources" are considered even if metadata is slightly off.
+  const flowArticles = MOCK_ARTICLES.map(art => ({
     id: art.id,
     title: art.title,
     url: art.url,
