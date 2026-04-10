@@ -45,12 +45,25 @@ export function BriefingDashboard() {
     } catch (error: any) {
       console.error(error);
       const isUnavailable = error.message?.includes("503") || error.message?.includes("high demand");
+      const isQuotaExceeded = error.message?.includes("429") || error.message?.includes("quota");
+      
+      let errorTitle = "Error";
+      let errorDesc = "Failed to generate briefing.";
+
+      if (isUnavailable) {
+        errorTitle = "AI High Demand";
+        errorDesc = "The AI is currently under high load. Please wait a few seconds and try again.";
+      } else if (isQuotaExceeded) {
+        errorTitle = "Quota Exceeded";
+        errorDesc = "The API rate limit has been reached. Please try again in about a minute.";
+      } else {
+        errorDesc = error.message || errorDesc;
+      }
+
       toast({ 
         variant: "destructive", 
-        title: isUnavailable ? "AI High Demand" : "Error", 
-        description: isUnavailable 
-          ? "The AI is currently under high load. Please wait a few seconds and try again." 
-          : (error.message || "Failed to generate briefing.") 
+        title: errorTitle, 
+        description: errorDesc 
       });
     } finally {
       setLoading(false);
