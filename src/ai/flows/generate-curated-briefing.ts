@@ -5,6 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { BriefingResultOutput, GenerateCuratedBriefingInput } from '@/lib/types';
 
 // Internal schemas - NOT exported to comply with Next.js 'use server' restrictions
 const ArticleSchema = z.object({
@@ -35,7 +36,7 @@ const EventClusterSchema = z.object({
   supportingSources: z.array(SupportingSourceSchema),
 });
 
-const GenerateCuratedBriefingInputSchema = z.object({
+const InternalInputSchema = z.object({
   language: z.enum(['en', 'de']),
   timeframe: z.string(),
   categories: z.array(z.string()),
@@ -46,7 +47,7 @@ const GenerateCuratedBriefingInputSchema = z.object({
   includeChangeAnalysis: z.boolean().optional(),
 });
 
-const BriefingResultOutputSchema = z.object({
+const InternalOutputSchema = z.object({
   mainTitle: z.string(),
   overviewParagraph: z.string(),
   briefingType: z.enum(['Ultra Short Update', 'Short Update', 'Morning Briefing', 'Executive Summary']),
@@ -60,14 +61,10 @@ const BriefingResultOutputSchema = z.object({
   whatChanged: z.string().optional(),
 });
 
-// Exported types for client use
-export type BriefingResultOutput = z.infer<typeof BriefingResultOutputSchema>;
-export type GenerateCuratedBriefingInput = z.infer<typeof GenerateCuratedBriefingInputSchema>;
-
 const generateCuratedBriefingPrompt = ai.definePrompt({
   name: 'generateCuratedBriefingPrompt',
-  input: { schema: GenerateCuratedBriefingInputSchema },
-  output: { schema: BriefingResultOutputSchema },
+  input: { schema: InternalInputSchema },
+  output: { schema: InternalOutputSchema },
   prompt: `You are an expert news analyst and briefing generator for a professional audience. Create a comprehensive and concise news briefing in "{{language}}".
 
 Strictly adhere to these rules:
@@ -99,8 +96,8 @@ Content: {{{this.content}}}
 const generateCuratedBriefingFlow = ai.defineFlow(
   {
     name: 'generateCuratedBriefingFlow',
-    inputSchema: GenerateCuratedBriefingInputSchema,
-    outputSchema: BriefingResultOutputSchema,
+    inputSchema: InternalInputSchema,
+    outputSchema: InternalOutputSchema,
   },
   async (input) => {
     const { output } = await generateCuratedBriefingPrompt(input);
@@ -109,6 +106,6 @@ const generateCuratedBriefingFlow = ai.defineFlow(
   }
 );
 
-export async function generateCuratedBriefing(input: GenerateCuratedBriefingInput): Promise<BriefingResultOutput> {
+export async function generateCuratedBriefing(input: any): Promise<any> {
   return generateCuratedBriefingFlow(input);
 }
