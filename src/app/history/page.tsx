@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { History, Calendar, Star, Trash2, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Helper to generate dynamic recent dates
+// Helfer, um dynamische aktuelle Daten zu generieren
 const getRecentDate = (daysAgo: number) => {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);

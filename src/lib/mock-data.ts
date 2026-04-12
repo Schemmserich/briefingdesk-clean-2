@@ -1,6 +1,6 @@
 import { Article, SourceConfig, UserPreset } from './types';
 
-// Helper to get ISO string for "N hours ago" relative to current time for hour-accurate data
+// Helfer, um ISO-Strings für "vor N Stunden" relativ zur aktuellen Zeit zu erhalten
 const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 
 export const MOCK_SOURCES: SourceConfig[] = [

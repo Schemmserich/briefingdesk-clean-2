@@ -1,17 +1,17 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for generating various types of curated news briefings.
+ * @fileOverview Ein Genkit-Flow zur Generierung verschiedener Arten von kuratierten Nachrichtenbriefings.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Internal schemas - NOT exported to comply with Next.js 'use server' restrictions
+// Interne Schemas - NICHT exportiert, um Next.js 'use server' Einschränkungen zu erfüllen
 const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
   url: z.string().url(),
-  publicationDate: z.string().datetime(),
+  publicationDate: z.string(),
   sourceName: z.string(),
   region: z.string(),
   category: z.string(),
@@ -19,14 +19,14 @@ const ArticleSchema = z.object({
   summary: z.string().optional(),
   sentiment: z.enum(['positive', 'negative', 'neutral', 'mixed']).optional(),
   canonicalHash: z.string().optional(),
-  trustScore: z.number().min(0).max(100).optional(),
+  trustScore: z.number().optional(),
 });
 
 const SupportingSourceSchema = z.object({
   title: z.string(),
   url: z.string().url(),
   sourceName: z.string(),
-  publicationDate: z.string().datetime(),
+  publicationDate: z.string(),
 });
 
 const EventClusterSchema = z.object({
