@@ -1,6 +1,6 @@
 "use server";
 
-import { generateCuratedBriefing, GenerateCuratedBriefingInput } from "@/ai/flows/generate-curated-briefing";
+import { generateCuratedBriefing } from "@/ai/flows/generate-curated-briefing";
 import { MOCK_ARTICLES } from "@/lib/mock-data";
 import { BriefingRequest } from "@/lib/types";
 
@@ -18,7 +18,7 @@ export async function generateCuratedBriefingAction(params: BriefingRequest) {
     trustScore: art.trustScore || 80
   }));
 
-  const input: GenerateCuratedBriefingInput = {
+  const input = {
     language: params.language,
     timeframe: params.timeframe,
     categories: params.categories,
