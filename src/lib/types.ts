@@ -1,53 +1,10 @@
-export type Language = 'en' | 'de';
+export type Language = "en" | "de";
 
-export type BriefingType = 'Ultra Short Update' | 'Short Update' | 'Morning Briefing' | 'Executive Summary';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  preferredLanguage: Language;
-}
-
-export interface UserPreset {
-  id: string;
-  name: string;
-  language: Language;
-  timeframe: string;
-  categories: string[];
-  regions: string[];
-  briefingType: BriefingType;
-  includeMarketInsights: boolean;
-  includeChangeAnalysis: boolean;
-  isDefault?: boolean;
-}
-
-export interface SourceConfig {
-  id: string;
-  name: string;
-  baseUrl: string;
-  region: string;
-  category: string;
-  isEnabled: boolean;
-  isPremium: boolean;
-  trustScore: number;
-  mode: 'metadata-only' | 'normal';
-}
-
-export interface Article {
-  id: string;
-  title: string;
-  sourceName: string;
-  publicationDate: string;
-  region: string;
-  category: string;
-  url: string;
-  content: string;
-  summary?: string;
-  sentiment?: 'positive' | 'negative' | 'neutral' | 'mixed';
-  trustScore?: number;
-  canonicalHash?: string;
-}
+export type BriefingType =
+  | "Ultra Short Update"
+  | "Short Update"
+  | "Morning Briefing"
+  | "Executive Summary";
 
 export interface BriefingRequest {
   language: Language;
@@ -55,33 +12,38 @@ export interface BriefingRequest {
   categories: string[];
   regions: string[];
   briefingType: BriefingType;
-  includeMarketInsights: boolean;
-  includeChangeAnalysis: boolean;
+  includeMarketInsights?: boolean;
+  includeChangeAnalysis?: boolean;
 }
 
-export interface EventCluster {
+export interface BriefingSection {
   title: string;
-  summary: string;
-  supportingSources: Array<{
-    title: string;
-    url: string;
-    sourceName: string;
-    publicationDate: string;
-  }>;
+  content: string;
+}
+
+export interface UsedSource {
+  id: string;
+  title: string;
+  url: string;
+  publicationDate: string;
+  sourceName: string;
+  region: string;
+  category: string;
+  trustScore?: number;
 }
 
 export interface BriefingResult {
-  id: string;
-  timestamp: string;
-  request: BriefingRequest;
   mainTitle: string;
   overviewParagraph: string;
+  briefingType: BriefingType;
   confidenceScore: number;
-  sections?: Array<{
-    title: string;
-    content: string;
-  }>;
-  eventClusters?: EventCluster[];
+  sections?: BriefingSection[];
   whyMarketsCare?: string;
   whatChanged?: string;
+
+  usedSources?: UsedSource[];
+  sourceWindowStart?: string | null;
+  sourceWindowEnd?: string | null;
+  sourceCount?: number;
+  articleCount?: number;
 }

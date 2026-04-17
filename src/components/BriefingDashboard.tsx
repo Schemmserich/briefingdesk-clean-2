@@ -35,40 +35,66 @@ export function BriefingDashboard() {
 
   const t = i18n[lang];
 
-  const handleGenerate = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const data = await generateCuratedBriefingAction(params);
-      setResult(data as any);
-      toast({ title: "Success", description: "Briefing generated successfully." });
-    } catch (error: any) {
-      console.error(error);
-      const isUnavailable = error.message?.includes("503") || error.message?.includes("high demand");
-      const isQuotaExceeded = error.message?.includes("429") || error.message?.includes("quota");
-      
-      let errorTitle = "Error";
-      let errorDesc = "Failed to generate briefing.";
+ const handleGenerate = async () => {
+  setLoading(true);
+  setResult(null);
 
-      if (isUnavailable) {
-        errorTitle = "AI High Demand";
-        errorDesc = "The AI is currently under high load. Please wait a few seconds and try again.";
-      } else if (isQuotaExceeded) {
-        errorTitle = "Quota Exceeded";
-        errorDesc = "The API rate limit has been reached. Please try again in about a minute.";
-      } else {
-        errorDesc = error.message || errorDesc;
-      }
+  try {
+    const response = await generateCuratedBriefingAction(params);
 
-      toast({ 
-        variant: "destructive", 
-        title: errorTitle, 
-        description: errorDesc 
+    console.log("FRONTEND RESPONSE:", response);
+
+    if (!response?.success) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          response?.error || "Failed to generate briefing.",
       });
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+
+    setResult(response.data as BriefingResult);
+
+    toast({
+      title: "Success",
+      description: "Briefing generated successfully.",
+    });
+  } catch (error: any) {
+    console.error(error);
+
+    const isUnavailable =
+      error.message?.includes("503") ||
+      error.message?.includes("high demand");
+
+    const isQuotaExceeded =
+      error.message?.includes("429") ||
+      error.message?.includes("quota");
+
+    let errorTitle = "Error";
+    let errorDesc = "Failed to generate briefing.";
+
+    if (isUnavailable) {
+      errorTitle = "AI High Demand";
+      errorDesc =
+        "The AI is currently under high load. Please wait a few seconds and try again.";
+    } else if (isQuotaExceeded) {
+      errorTitle = "Quota Exceeded";
+      errorDesc =
+        "The API rate limit has been reached. Please try again in about a minute.";
+    } else {
+      errorDesc = error.message || errorDesc;
+    }
+
+    toast({
+      variant: "destructive",
+      title: errorTitle,
+      description: errorDesc,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const toggleCategory = (cat: string) => {
     setParams(prev => ({
