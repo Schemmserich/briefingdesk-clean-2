@@ -22,8 +22,8 @@ async function importWorldFeed(): Promise<ImportedArticle[]> {
     .slice(0, 10)
     .map((item, index) => ({
       externalId: item.guid ?? `world-${index}`,
-      sourceSlug: 'reuters',
-      sourceName: 'Reuters',
+      sourceSlug: 'bbc',
+      sourceName: 'BBC',
       title: item.title ?? 'Untitled',
       url: item.link ?? 'https://example.com',
       publicationDate: item.pubDate
@@ -51,8 +51,8 @@ async function importBusinessFeed(): Promise<ImportedArticle[]> {
     .slice(0, 10)
     .map((item, index) => ({
       externalId: item.guid ?? `business-${index}`,
-      sourceSlug: 'handelsblatt',
-      sourceName: 'Handelsblatt',
+      sourceSlug: 'nyt',
+      sourceName: 'New York Times',
       title: item.title ?? 'Untitled',
       url: item.link ?? 'https://example.com',
       publicationDate: item.pubDate

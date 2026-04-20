@@ -4,6 +4,10 @@ import { generateCuratedBriefing } from '@/ai/flows/generate-curated-briefing';
 import { getFilteredArticles } from '@/lib/db/queries';
 import { buildFallbackBriefing } from '@/lib/fallbackBriefing';
 
+function toPlainObject<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function buildSourceMeta(articles: any[]) {
   if (!articles.length) {
     return {
@@ -59,13 +63,15 @@ export async function generateCuratedBriefingAction(input: any) {
 
     const articlesForBriefing = filteredArticles.slice(0, 15);
 
+    console.log('ACTION FILTERED ARTICLES:', articlesForBriefing.length);
+
     if (articlesForBriefing.length === 0) {
-      return {
+      return toPlainObject({
         success: false,
         data: null,
         error:
           'Für die gewählten Filter und das gewählte Zeitfenster wurden keine passenden Artikel gefunden. Bitte erweitere das Zeitfenster oder passe die Kategorien und Regionen an.',
-      };
+      });
     }
 
     const sourceMeta = buildSourceMeta(articlesForBriefing);
@@ -76,14 +82,14 @@ export async function generateCuratedBriefingAction(input: any) {
         articles: articlesForBriefing,
       });
 
-      return {
+      return toPlainObject({
         success: true,
         data: {
           ...result,
           ...sourceMeta,
         },
         error: null,
-      };
+      });
     } catch (aiError: any) {
       console.error('AI briefing failed, using fallback briefing:', aiError);
 
@@ -98,24 +104,24 @@ export async function generateCuratedBriefingAction(input: any) {
         articlesForBriefing
       );
 
-      return {
+      return toPlainObject({
         success: true,
         data: {
           ...fallbackResult,
           ...sourceMeta,
         },
         error: null,
-      };
+      });
     }
   } catch (error: any) {
     console.error('Briefing Generation Error Detail:', error);
 
-    return {
+    return toPlainObject({
       success: false,
       data: null,
       error:
         error?.message ||
         'The briefing could not be generated right now. Please try again shortly.',
-    };
+    });
   }
 }
