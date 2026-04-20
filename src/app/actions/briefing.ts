@@ -61,7 +61,27 @@ export async function generateCuratedBriefingAction(input: any) {
       regions: input.regions ?? [],
     });
 
-    const articlesForBriefing = filteredArticles.slice(0, 15);
+    const maxPerSource = 4;
+    const selected: any[] = [];
+    const sourceCounter = new Map<string, number>();
+
+    for (const article of filteredArticles) {
+      const sourceName = article.sourceName ?? 'Unknown Source';
+      const currentCount = sourceCounter.get(sourceName) ?? 0;
+
+      if (currentCount >= maxPerSource) {
+        continue;
+      }
+
+      selected.push(article);
+      sourceCounter.set(sourceName, currentCount + 1);
+
+      if (selected.length >= 30) {
+        break;
+      }
+    }
+
+    const articlesForBriefing = selected;
 
     console.log('ACTION FILTERED ARTICLES:', articlesForBriefing.length);
 
