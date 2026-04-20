@@ -14,10 +14,34 @@ function isFresh(pubDate?: string, maxHours = 24): boolean {
 }
 
 function normalizeCategory(
-  sourceCategory: string | undefined,
+  sourceCategory: unknown,
   fallback: string
 ): string {
-  const value = (sourceCategory ?? '').toLowerCase();
+  let raw = '';
+
+  if (typeof sourceCategory === 'string') {
+    raw = sourceCategory;
+  } else if (Array.isArray(sourceCategory)) {
+    raw = sourceCategory
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object' && 'name' in item) {
+          return String((item as { name?: unknown }).name ?? '');
+        }
+        return '';
+      })
+      .join(' ');
+  } else if (
+    sourceCategory &&
+    typeof sourceCategory === 'object' &&
+    'name' in sourceCategory
+  ) {
+    raw = String((sourceCategory as { name?: unknown }).name ?? '');
+  } else {
+    raw = '';
+  }
+
+  const value = raw.toLowerCase();
 
   if (
     value.includes('business') ||
@@ -114,10 +138,7 @@ async function importNytBusinessFeed(): Promise<ImportedArticle[]> {
         : new Date().toISOString(),
       language: 'en',
       region: 'North America',
-      category: normalizeCategory(
-        Array.isArray(item.categories) ? item.categories[0] : undefined,
-        'Economy'
-      ),
+      category: 'Economy',
       content:
         item.contentSnippet ??
         item.content ??
@@ -125,38 +146,6 @@ async function importNytBusinessFeed(): Promise<ImportedArticle[]> {
         'No content available.',
       summary: item.contentSnippet ?? undefined,
       trustScore: 93,
-    }));
-}
-
-async function importReutersWorldFeed(): Promise<ImportedArticle[]> {
-  const feedUrl = 'https://feeds.reuters.com/Reuters/worldNews';
-  const feed = await parser.parseURL(feedUrl);
-
-  return (feed.items ?? [])
-    .filter((item) => isFresh(item.pubDate, 24))
-    .slice(0, 12)
-    .map((item, index) => ({
-      externalId: item.guid ?? `reuters-world-${index}`,
-      sourceSlug: 'reuters',
-      sourceName: 'Reuters',
-      title: item.title ?? 'Untitled',
-      url: item.link ?? 'https://www.reuters.com',
-      publicationDate: item.pubDate
-        ? new Date(item.pubDate).toISOString()
-        : new Date().toISOString(),
-      language: 'en',
-      region: 'Global',
-      category: normalizeCategory(
-        Array.isArray(item.categories) ? item.categories[0] : undefined,
-        'Politics'
-      ),
-      content:
-        item.contentSnippet ??
-        item.content ??
-        item.title ??
-        'No content available.',
-      summary: item.contentSnippet ?? undefined,
-      trustScore: 95,
     }));
 }
 
@@ -231,7 +220,6 @@ async function main() {
     const results = await Promise.allSettled([
       importBbcWorldFeed(),
       importNytBusinessFeed(),
-      importReutersWorldFeed(),
       importCnbcWorldFeed(),
       importTagesschauFeed(),
     ]);
