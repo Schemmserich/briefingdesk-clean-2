@@ -13,25 +13,143 @@ function isFresh(pubDate?: string, maxHours = 24): boolean {
   return published >= cutoff;
 }
 
-async function importWorldFeed(): Promise<ImportedArticle[]> {
+function normalizeCategory(
+  sourceCategory: string | undefined,
+  fallback: string
+): string {
+  const value = (sourceCategory ?? '').toLowerCase();
+
+  if (
+    value.includes('business') ||
+    value.includes('economy') ||
+    value.includes('wirtschaft')
+  ) {
+    return 'Economy';
+  }
+
+  if (
+    value.includes('market') ||
+    value.includes('markets') ||
+    value.includes('stocks') ||
+    value.includes('börse')
+  ) {
+    return 'Stock Markets';
+  }
+
+  if (value.includes('tech')) {
+    return 'Technology';
+  }
+
+  if (value.includes('science')) {
+    return 'Science';
+  }
+
+  if (value.includes('health')) {
+    return 'Health';
+  }
+
+  if (value.includes('climate')) {
+    return 'Climate';
+  }
+
+  if (
+    value.includes('politics') ||
+    value.includes('world') ||
+    value.includes('international') ||
+    value.includes('europe')
+  ) {
+    return 'Politics';
+  }
+
+  return fallback;
+}
+
+async function importBbcWorldFeed(): Promise<ImportedArticle[]> {
   const feedUrl = 'https://feeds.bbci.co.uk/news/world/rss.xml';
   const feed = await parser.parseURL(feedUrl);
 
   return (feed.items ?? [])
     .filter((item) => isFresh(item.pubDate, 24))
-    .slice(0, 10)
+    .slice(0, 12)
     .map((item, index) => ({
-      externalId: item.guid ?? `world-${index}`,
+      externalId: item.guid ?? `bbc-world-${index}`,
       sourceSlug: 'bbc',
       sourceName: 'BBC',
       title: item.title ?? 'Untitled',
-      url: item.link ?? 'https://example.com',
+      url: item.link ?? 'https://www.bbc.com',
       publicationDate: item.pubDate
         ? new Date(item.pubDate).toISOString()
         : new Date().toISOString(),
       language: 'en',
       region: 'Global',
-      category: 'Politics',
+      category: normalizeCategory(
+        Array.isArray(item.categories) ? item.categories[0] : undefined,
+        'Politics'
+      ),
+      content:
+        item.contentSnippet ??
+        item.content ??
+        item.title ??
+        'No content available.',
+      summary: item.contentSnippet ?? undefined,
+      trustScore: 92,
+    }));
+}
+
+async function importNytBusinessFeed(): Promise<ImportedArticle[]> {
+  const feedUrl = 'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml';
+  const feed = await parser.parseURL(feedUrl);
+
+  return (feed.items ?? [])
+    .filter((item) => isFresh(item.pubDate, 24))
+    .slice(0, 12)
+    .map((item, index) => ({
+      externalId: item.guid ?? `nyt-business-${index}`,
+      sourceSlug: 'nyt',
+      sourceName: 'New York Times',
+      title: item.title ?? 'Untitled',
+      url: item.link ?? 'https://www.nytimes.com',
+      publicationDate: item.pubDate
+        ? new Date(item.pubDate).toISOString()
+        : new Date().toISOString(),
+      language: 'en',
+      region: 'North America',
+      category: normalizeCategory(
+        Array.isArray(item.categories) ? item.categories[0] : undefined,
+        'Economy'
+      ),
+      content:
+        item.contentSnippet ??
+        item.content ??
+        item.title ??
+        'No content available.',
+      summary: item.contentSnippet ?? undefined,
+      trustScore: 93,
+    }));
+}
+
+async function importReutersWorldFeed(): Promise<ImportedArticle[]> {
+  const feedUrl = 'https://feeds.reuters.com/Reuters/worldNews';
+  const feed = await parser.parseURL(feedUrl);
+
+  return (feed.items ?? [])
+    .filter((item) => isFresh(item.pubDate, 24))
+    .slice(0, 12)
+    .map((item, index) => ({
+      externalId: item.guid ?? `reuters-world-${index}`,
+      sourceSlug: 'reuters',
+      sourceName: 'Reuters',
+      title: item.title ?? 'Untitled',
+      url: item.link ?? 'https://www.reuters.com',
+      publicationDate: item.pubDate
+        ? new Date(item.pubDate).toISOString()
+        : new Date().toISOString(),
+      language: 'en',
+      region: 'Global',
+      category: normalizeCategory(
+        Array.isArray(item.categories) ? item.categories[0] : undefined,
+        'Politics'
+      ),
       content:
         item.contentSnippet ??
         item.content ??
@@ -42,32 +160,67 @@ async function importWorldFeed(): Promise<ImportedArticle[]> {
     }));
 }
 
-async function importBusinessFeed(): Promise<ImportedArticle[]> {
-  const feedUrl = 'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml';
+async function importCnbcWorldFeed(): Promise<ImportedArticle[]> {
+  const feedUrl = 'https://www.cnbc.com/id/100727362/device/rss/rss.html';
   const feed = await parser.parseURL(feedUrl);
 
   return (feed.items ?? [])
     .filter((item) => isFresh(item.pubDate, 24))
-    .slice(0, 10)
+    .slice(0, 12)
     .map((item, index) => ({
-      externalId: item.guid ?? `business-${index}`,
-      sourceSlug: 'nyt',
-      sourceName: 'New York Times',
+      externalId: item.guid ?? `cnbc-world-${index}`,
+      sourceSlug: 'cnbc',
+      sourceName: 'CNBC',
       title: item.title ?? 'Untitled',
-      url: item.link ?? 'https://example.com',
+      url: item.link ?? 'https://www.cnbc.com',
       publicationDate: item.pubDate
         ? new Date(item.pubDate).toISOString()
         : new Date().toISOString(),
-      language: 'de',
-      region: 'Europe',
-      category: 'Economy',
+      language: 'en',
+      region: 'Global',
+      category: normalizeCategory(
+        Array.isArray(item.categories) ? item.categories[0] : undefined,
+        'Stock Markets'
+      ),
       content:
         item.contentSnippet ??
         item.content ??
         item.title ??
         'No content available.',
       summary: item.contentSnippet ?? undefined,
-      trustScore: 89,
+      trustScore: 91,
+    }));
+}
+
+async function importTagesschauFeed(): Promise<ImportedArticle[]> {
+  const feedUrl = 'https://www.tagesschau.de/xml/rss2';
+  const feed = await parser.parseURL(feedUrl);
+
+  return (feed.items ?? [])
+    .filter((item) => isFresh(item.pubDate, 24))
+    .slice(0, 12)
+    .map((item, index) => ({
+      externalId: item.guid ?? `tagesschau-${index}`,
+      sourceSlug: 'tagesschau',
+      sourceName: 'Tagesschau',
+      title: item.title ?? 'Untitled',
+      url: item.link ?? 'https://www.tagesschau.de',
+      publicationDate: item.pubDate
+        ? new Date(item.pubDate).toISOString()
+        : new Date().toISOString(),
+      language: 'de',
+      region: 'Europe',
+      category: normalizeCategory(
+        Array.isArray(item.categories) ? item.categories[0] : undefined,
+        'Politics'
+      ),
+      content:
+        item.contentSnippet ??
+        item.content ??
+        item.title ??
+        'No content available.',
+      summary: item.contentSnippet ?? undefined,
+      trustScore: 90,
     }));
 }
 
@@ -75,14 +228,37 @@ async function main() {
   try {
     console.log('Starting article import...');
 
-    const worldArticles = await importWorldFeed();
-    const businessArticles = await importBusinessFeed();
+    const results = await Promise.allSettled([
+      importBbcWorldFeed(),
+      importNytBusinessFeed(),
+      importReutersWorldFeed(),
+      importCnbcWorldFeed(),
+      importTagesschauFeed(),
+    ]);
 
-    const allArticles = [...worldArticles, ...businessArticles];
+    const successfulImports = results
+      .filter(
+        (
+          result
+        ): result is PromiseFulfilledResult<ImportedArticle[]> =>
+          result.status === 'fulfilled'
+      )
+      .flatMap((result) => result.value);
 
-    console.log('Fresh articles found:', allArticles.length);
+    const failedImports = results.filter((result) => result.status === 'rejected');
 
-    const result = await ingestArticles(allArticles);
+    if (failedImports.length > 0) {
+      console.warn('Some feeds could not be imported:', failedImports.length);
+      failedImports.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.warn(`Feed ${index + 1} failed:`, result.reason);
+        }
+      });
+    }
+
+    console.log('Fresh articles found:', successfulImports.length);
+
+    const result = await ingestArticles(successfulImports);
 
     console.log('Import finished successfully.');
     console.log('Inserted:', result.inserted);
