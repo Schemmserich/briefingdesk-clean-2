@@ -1,18 +1,20 @@
 {
-  "name": "BriefingDesk",
-  "short_name": "BriefingDesk",
+  "name": "Briefing Desk",
+  "short_name": "Briefing",
+  "description": "Professionelle News-Briefings mit Audio",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#111111",
+  "background_color": "#081225",
+  "theme_color": "#0b1220",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/192/192/192",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://picsum.photos/seed/512/512/512",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

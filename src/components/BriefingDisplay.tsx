@@ -3,6 +3,7 @@
 import { BriefingResult, Language } from "@/lib/types";
 import { i18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BriefingAudioPlayer } from "@/components/BriefingAudioPlayer";
 import { TrendingUp, History, ShieldCheck, Newspaper, Clock3, Link2 } from "lucide-react";
 
 interface BriefingDisplayProps {
@@ -97,6 +98,17 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
           {briefing.overviewParagraph}
         </p>
       </div>
+
+      <BriefingAudioPlayer
+        language={language}
+        briefing={{
+          mainTitle: briefing.mainTitle,
+          overviewParagraph: briefing.overviewParagraph,
+          sections: briefing.sections,
+          whyMarketsCare: briefing.whyMarketsCare,
+          whatChanged: briefing.whatChanged,
+        }}
+      />
 
       <Card className="briefing-card bg-white/[0.02]">
         <CardHeader className="pb-3">
