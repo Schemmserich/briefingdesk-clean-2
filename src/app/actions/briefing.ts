@@ -1,24 +1,14 @@
-'use server';
+"use server";
 
-import { generateCuratedBriefing } from '@/ai/flows/generate-curated-briefing';
-import { getFilteredArticles } from '@/lib/db/queries';
-import { buildFallbackBriefing } from '@/lib/fallbackBriefing';
+import { getFilteredArticles } from "@/lib/db/queries";
+import { generateCuratedBriefing } from "@/ai/flows/generate-curated-briefing";
+import { buildFallbackBriefing } from "@/lib/fallbackBriefing";
 
 function toPlainObject<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
 function buildSourceMeta(articles: any[]) {
-  if (!articles.length) {
-    return {
-      usedSources: [],
-      sourceWindowStart: null,
-      sourceWindowEnd: null,
-      sourceCount: 0,
-      articleCount: 0,
-    };
-  }
-
   const sortedByDate = [...articles].sort((a, b) => {
     const aTime = new Date(a.publicationDate).getTime();
     const bTime = new Date(b.publicationDate).getTime();
@@ -35,28 +25,27 @@ function buildSourceMeta(articles: any[]) {
 
   const usedSources = articles.map((article) => ({
     id: article.id,
+    sourceName: article.sourceName,
     title: article.title,
     url: article.url,
     publicationDate: article.publicationDate,
-    sourceName: article.sourceName,
-    region: article.region,
     category: article.category,
-    trustScore: article.trustScore,
+    region: article.region,
   }));
 
   return {
-    usedSources,
+    articleCount: articles.length,
+    sourceCount: sourceNames.size,
     sourceWindowStart,
     sourceWindowEnd,
-    sourceCount: sourceNames.size,
-    articleCount: articles.length,
+    usedSources,
   };
 }
 
 export async function generateCuratedBriefingAction(input: any) {
   try {
     const filteredArticles = await getFilteredArticles({
-      timeframe: input.timeframe,
+      timeframe: input.timeframe ?? "24h",
       categories: input.categories ?? [],
       regions: input.regions ?? [],
     });
@@ -66,7 +55,7 @@ export async function generateCuratedBriefingAction(input: any) {
     const sourceCounter = new Map<string, number>();
 
     for (const article of filteredArticles) {
-      const sourceName = article.sourceName ?? 'Unknown Source';
+      const sourceName = article.sourceName ?? "Unknown Source";
       const currentCount = sourceCounter.get(sourceName) ?? 0;
 
       if (currentCount >= maxPerSource) {
@@ -75,23 +64,29 @@ export async function generateCuratedBriefingAction(input: any) {
 
       selected.push(article);
       sourceCounter.set(sourceName, currentCount + 1);
-
-      if (selected.length >= 30) {
-        break;
-      }
     }
 
     const articlesForBriefing = selected;
 
-    console.log('ACTION FILTERED ARTICLES:', articlesForBriefing.length);
+    console.log("ACTION FILTERED ARTICLES:", articlesForBriefing.length);
+    console.log(
+      "ACTION FILTERED TITLES:",
+      articlesForBriefing.map((a) => ({
+        title: a.title,
+        publicationDate: a.publicationDate,
+        sourceName: a.sourceName,
+      }))
+    );
 
-    if (articlesForBriefing.length === 0) {
-      return toPlainObject({
+    if (!articlesForBriefing.length) {
+      return {
         success: false,
         data: null,
         error:
-          'Für die gewählten Filter und das gewählte Zeitfenster wurden keine passenden Artikel gefunden. Bitte erweitere das Zeitfenster oder passe die Kategorien und Regionen an.',
-      });
+          input.language === "de"
+            ? "Für die gewählten Filter und das gewählte Zeitfenster wurden keine passenden Artikel gefunden. Bitte erweitere das Zeitfenster oder passe die Kategorien und Regionen an."
+            : "No matching articles were found for the selected filters and timeframe. Please widen the timeframe or adjust categories and regions.",
+      };
     }
 
     const sourceMeta = buildSourceMeta(articlesForBriefing);
@@ -102,46 +97,50 @@ export async function generateCuratedBriefingAction(input: any) {
         articles: articlesForBriefing,
       });
 
-      return toPlainObject({
+      const finalResult = {
+        ...toPlainObject(result),
+        ...sourceMeta,
+        debugVersion: "ACTION_V2_LIVE",
+      };
+
+      console.log("ACTION RETURNING AI RESULT:", finalResult);
+
+      return {
         success: true,
-        data: {
-          ...result,
-          ...sourceMeta,
-        },
+        data: finalResult,
         error: null,
-      });
+      };
     } catch (aiError: any) {
-      console.error('AI briefing failed, using fallback briefing:', aiError);
+      console.error("AI briefing failed, using fallback briefing:", aiError);
 
       const fallbackResult = buildFallbackBriefing(
-        {
-          language: input.language,
-          timeframe: input.timeframe,
-          briefingType: input.briefingType,
-          includeMarketInsights: input.includeMarketInsights,
-          includeChangeAnalysis: input.includeChangeAnalysis,
-        },
+        input,
         articlesForBriefing
       );
 
-      return toPlainObject({
+      const finalFallback = {
+        ...fallbackResult,
+        ...sourceMeta,
+        debugVersion: "ACTION_V2_FALLBACK",
+      };
+
+      console.log("ACTION RETURNING FALLBACK RESULT:", finalFallback);
+
+      return {
         success: true,
-        data: {
-          ...fallbackResult,
-          ...sourceMeta,
-        },
+        data: finalFallback,
         error: null,
-      });
+      };
     }
   } catch (error: any) {
-    console.error('Briefing Generation Error Detail:', error);
+    console.error("Briefing Generation Error Detail:", error);
 
-    return toPlainObject({
+    return {
       success: false,
       data: null,
       error:
         error?.message ||
-        'The briefing could not be generated right now. Please try again shortly.',
-    });
+        "Unexpected error while generating the briefing.",
+    };
   }
 }
