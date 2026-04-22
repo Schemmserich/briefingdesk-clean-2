@@ -120,20 +120,8 @@ async function runPrimaryPrompt(input: z.infer<typeof InternalInputSchema>) {
   return output;
 }
 
-async function runFallbackPrompt(input: z.infer<typeof InternalInputSchema>) {
-  const { output } = await generateCuratedBriefingPrompt(input);
-  if (!output) {
-    throw new Error('Generation failed: no output returned by fallback model');
-  }
-  return output;
-}
-
 function getErrorMessage(error: any): string {
-  return String(
-    error?.originalMessage ||
-      error?.message ||
-      ''
-  ).toLowerCase();
+  return String(error?.originalMessage || error?.message || '').toLowerCase();
 }
 
 function is429Error(error: any): boolean {
@@ -169,7 +157,7 @@ const generateCuratedBriefingFlow = ai.defineFlow(
   async (input) => {
     try {
       return await withAiRetry(() => runPrimaryPrompt(input), {
-        retries: 1,
+        retries: 0,
         baseDelayMs: 1500,
       });
     } catch (primaryError: any) {
@@ -185,17 +173,8 @@ const generateCuratedBriefingFlow = ai.defineFlow(
         throw primaryError;
       }
 
-      try {
-        console.warn('Primary prompt returned 503. Trying fallback prompt once...');
-        return await withAiRetry(() => runFallbackPrompt(input), {
-          retries: 0,
-          baseDelayMs: 1000,
-        });
-      } catch (fallbackError: any) {
-        console.error('Fallback AI prompt failed:', fallbackError);
-        mapAiErrorToUserMessage(fallbackError);
-        throw fallbackError;
-      }
+      mapAiErrorToUserMessage(primaryError);
+      throw primaryError;
     }
   }
 );

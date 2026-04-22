@@ -4,6 +4,26 @@ import { getFilteredArticles } from "@/lib/db/queries";
 import { generateCuratedBriefing } from "@/ai/flows/generate-curated-briefing";
 import { buildFallbackBriefing } from "@/lib/fallbackBriefing";
 
+type CachedBriefingEntry = {
+  createdAt: number;
+  payload: any;
+};
+
+const briefingCache = new Map<string, CachedBriefingEntry>();
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+function buildCacheKey(input: any) {
+  return JSON.stringify({
+    language: input.language ?? "en",
+    timeframe: input.timeframe ?? "24h",
+    categories: [...(input.categories ?? [])].sort(),
+    regions: [...(input.regions ?? [])].sort(),
+    briefingType: input.briefingType ?? "Morning Briefing",
+    includeMarketInsights: !!input.includeMarketInsights,
+    includeChangeAnalysis: !!input.includeChangeAnalysis,
+  });
+}
+
 function toPlainObject<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
@@ -44,6 +64,20 @@ function buildSourceMeta(articles: any[]) {
 
 export async function generateCuratedBriefingAction(input: any) {
   try {
+    const cacheKey = buildCacheKey(input);
+    const cached = briefingCache.get(cacheKey);
+
+    if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
+      return {
+        success: true,
+        data: {
+          ...cached.payload,
+          debugVersion: "ACTION_V3_CACHE",
+        },
+        error: null,
+      };
+    }
+
     const filteredArticles = await getFilteredArticles({
       timeframe: input.timeframe ?? "24h",
       categories: input.categories ?? [],
@@ -66,7 +100,7 @@ export async function generateCuratedBriefingAction(input: any) {
       sourceCounter.set(sourceName, currentCount + 1);
     }
 
-    const articlesForBriefing = selected;
+    const articlesForBriefing = selected.slice(0, 8);
 
     console.log("ACTION FILTERED ARTICLES:", articlesForBriefing.length);
     console.log(
@@ -100,8 +134,13 @@ export async function generateCuratedBriefingAction(input: any) {
       const finalResult = {
         ...toPlainObject(result),
         ...sourceMeta,
-        debugVersion: "ACTION_V2_LIVE",
+        debugVersion: "ACTION_V3_LIVE",
       };
+
+      briefingCache.set(cacheKey, {
+        createdAt: Date.now(),
+        payload: finalResult,
+      });
 
       console.log("ACTION RETURNING AI RESULT:", finalResult);
 
@@ -121,8 +160,13 @@ export async function generateCuratedBriefingAction(input: any) {
       const finalFallback = {
         ...fallbackResult,
         ...sourceMeta,
-        debugVersion: "ACTION_V2_FALLBACK",
+        debugVersion: "ACTION_V3_FALLBACK",
       };
+
+      briefingCache.set(cacheKey, {
+        createdAt: Date.now(),
+        payload: finalFallback,
+      });
 
       console.log("ACTION RETURNING FALLBACK RESULT:", finalFallback);
 
