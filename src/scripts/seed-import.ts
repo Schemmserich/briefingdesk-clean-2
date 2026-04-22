@@ -271,16 +271,13 @@ async function importTagesschauFeeds(): Promise<ImportedArticle[]> {
     })
   );
 
-  return results
-    .filter(
-      (
-        result
-      ): result is PromiseFulfilledResult<ImportedArticle[]> =>
-        result.status === 'fulfilled'
-    )
-    .flatMap((result) => result.value);
+ return results.flatMap((result) => {
+  if (result.status === "fulfilled") {
+    return result.value;
+  }
+  return [];
+});
 }
-
 async function main() {
   try {
     console.log('Seed importer file loaded');
@@ -293,14 +290,12 @@ async function main() {
       importTagesschauFeeds(),
     ]);
 
-    const successfulImports = results
-      .filter(
-        (
-          result
-        ): result is PromiseFulfilledResult<ImportedArticle[]> =>
-          result.status === 'fulfilled'
-      )
-      .flatMap((result) => result.value);
+    const successfulImports = results.flatMap((result) => {
+  if (result.status === "fulfilled") {
+    return result.value;
+  }
+  return [];
+});
 
     const failedImports = results.filter(
       (result) => result.status === 'rejected'

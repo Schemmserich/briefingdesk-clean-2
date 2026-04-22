@@ -1,11 +1,11 @@
 {
-  "name": "Briefing Desk",
-  "short_name": "Briefing",
-  "description": "Professionelle News-Briefings mit Audio",
+  "name": "BriefingDesk",
+  "short_name": "BriefingDesk",
+  "description": "Professionelle News- und Markt-Briefings als App.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#081225",
-  "theme_color": "#0b1220",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
   "orientation": "portrait",
   "icons": [
     {
