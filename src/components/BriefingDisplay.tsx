@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BriefingAudioPlayer } from "@/components/BriefingAudioPlayer";
 import { i18n } from "@/lib/i18n";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Language = "de" | "en";
 
@@ -208,16 +211,18 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
 
   return language === "de" ? "Allgemein" : "General";
 }
+
 export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
   const t = i18n[language];
   const sections = briefing.sections ?? [];
   const sources = briefing.usedSources ?? [];
+  const [showSources, setShowSources] = useState(false);
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <section className="space-y-5">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-full overflow-x-hidden">
+      <section className="space-y-4 sm:space-y-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-4 flex-1">
+          <div className="space-y-4 flex-1 min-w-0">
             <div className="flex flex-wrap gap-2">
               {typeof briefing.articleCount === "number" && (
                 <Badge variant="outline" className="border-white/10 text-muted-foreground font-normal">
@@ -235,24 +240,24 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
               )}
             </div>
 
-            <h1 className="text-4xl font-headline font-bold text-white leading-tight">
+            <h1 className="text-2xl sm:text-3xl xl:text-4xl font-headline font-bold text-white leading-tight break-words">
               {briefing.mainTitle}
             </h1>
 
-            <p className="text-xl text-muted-foreground leading-relaxed font-medium">
+            <p className="text-base sm:text-lg xl:text-xl text-muted-foreground leading-7 sm:leading-8 font-medium">
               {briefing.overviewParagraph}
             </p>
           </div>
 
-          <div className="self-start">
-            <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-3 min-w-[170px]">
+          <div className="self-start w-full xl:w-auto">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 w-full xl:min-w-[170px]">
               <div className="flex items-center gap-2 mb-1">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-400" />
                 <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
                   {t.confidenceScore}
                 </span>
               </div>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-xl sm:text-2xl font-bold text-white">
                 {typeof briefing.confidenceScore === "number"
                   ? `${briefing.confidenceScore}%`
                   : "—"}
@@ -274,12 +279,12 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
       />
 
       {sections.length > 0 && (
-        <section className="space-y-5">
+        <section className="space-y-4 sm:space-y-5">
           <div className="space-y-1">
-            <h2 className="text-sm uppercase tracking-[0.2em] font-bold text-muted-foreground px-1">
+            <h2 className="text-xs sm:text-sm uppercase tracking-[0.2em] font-bold text-muted-foreground px-1">
               {language === "de" ? "Zusammengefasste Themen" : "Curated Summary Blocks"}
             </h2>
-            <p className="text-sm text-muted-foreground px-1">
+            <p className="text-sm text-muted-foreground px-1 leading-6">
               {language === "de"
                 ? "Die wichtigsten Entwicklungen in komprimierter, thematisch strukturierter Form."
                 : "The most relevant developments in compressed, thematically structured form."}
@@ -288,22 +293,22 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
 
           <div className="space-y-4">
             {sections.map((section, idx) => (
-              <Card key={`${section.title ?? "section"}-${idx}`} className="briefing-card">
-                <CardHeader className="space-y-3">
+              <Card key={`${section.title ?? "section"}-${idx}`} className="briefing-card overflow-hidden">
+                <CardHeader className="space-y-3 p-4 sm:p-6">
                   <div>
                     <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
                       {inferCategoryFromSection(section, language)}
                     </span>
                   </div>
 
-                  <CardTitle className="text-xl font-bold text-white leading-snug">
+                  <CardTitle className="text-lg sm:text-xl font-bold text-white leading-snug break-words">
                     {safeText(section.title) ||
                       (language === "de" ? `Zusammenfassung ${idx + 1}` : `Summary ${idx + 1}`)}
                   </CardTitle>
                 </CardHeader>
 
-                <CardContent>
-                  <p className="text-base text-muted-foreground leading-8">
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                  <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8 break-words">
                     {safeText(section.content)}
                   </p>
                 </CardContent>
@@ -317,13 +322,13 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {briefing.whyMarketsCare && (
             <Card className="briefing-card">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-white">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg font-bold text-white">
                   {t.whyMarketsCare}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-base text-muted-foreground leading-8">
+              <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
                   {briefing.whyMarketsCare}
                 </p>
               </CardContent>
@@ -332,13 +337,13 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
 
           {briefing.whatChanged && (
             <Card className="briefing-card">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-white">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg font-bold text-white">
                   {language === "de" ? "Was sich verändert hat" : "What Changed"}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-base text-muted-foreground leading-8">
+              <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
                   {briefing.whatChanged}
                 </p>
               </CardContent>
@@ -348,13 +353,13 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
       )}
 
       <Card className="briefing-card">
-        <CardHeader>
-          <CardTitle className="text-lg font-bold text-white">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg font-bold text-white">
             {language === "de" ? "Quellenhinweis" : "Source Note"}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
+        <CardContent className="space-y-2 text-sm text-muted-foreground p-4 pt-0 sm:p-6 sm:pt-0">
+          <p className="leading-6">
             <span className="font-semibold text-white">
               {language === "de" ? "Quellenbasis:" : "Source base:"}
             </span>{" "}
@@ -364,7 +369,7 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
             {language === "de" ? "Quellen" : "sources"}
           </p>
 
-          <p>
+          <p className="leading-6">
             <span className="font-semibold text-white">
               {language === "de" ? "Quellenfenster:" : "Source window:"}
             </span>{" "}
@@ -375,51 +380,70 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
 
       {sources.length > 0 && (
         <section className="space-y-4">
-          <h3 className="text-sm uppercase tracking-[0.2em] font-bold text-muted-foreground px-1">
-            {language === "de" ? "Verwendete Quellen" : "Used Sources"}
-          </h3>
+          <button
+            type="button"
+            onClick={() => setShowSources((prev) => !prev)}
+            className="w-full flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:bg-white/[0.05]"
+          >
+            <div className="min-w-0">
+              <h3 className="text-sm uppercase tracking-[0.2em] font-bold text-muted-foreground">
+                {language === "de" ? "Verwendete Quellen" : "Used Sources"}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                {language === "de"
+                  ? `${sources.length} Einträge anzeigen oder ausblenden`
+                  : `Show or hide ${sources.length} entries`}
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {sources.map((source, idx) => (
-              <a
-                key={`${source.id ?? source.url ?? source.title ?? "source"}-${idx}`}
-                href={source.url || "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="briefing-card p-5 block hover:border-primary/50 transition-colors"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-bold text-primary">
-                        {safeText(source.sourceName) || (language === "de" ? "Quelle" : "Source")}
+            <div className="shrink-0 text-muted-foreground">
+              {showSources ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </div>
+          </button>
+
+          {showSources && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {sources.map((source, idx) => (
+                <a
+                  key={`${source.id ?? source.url ?? source.title ?? "source"}-${idx}`}
+                  href={source.url || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="briefing-card p-4 sm:p-5 block hover:border-primary/50 transition-colors min-w-0"
+                >
+                  <div className="space-y-3 min-w-0">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-primary">
+                          {safeText(source.sourceName) || (language === "de" ? "Quelle" : "Source")}
+                        </div>
+                        <div className="text-sm sm:text-base font-semibold text-white leading-snug mt-1 break-words">
+                          {safeText(source.title) || "—"}
+                        </div>
                       </div>
-                      <div className="text-base font-semibold text-white leading-snug mt-1">
-                        {safeText(source.title) || "—"}
+
+                      <div className="text-xs text-muted-foreground shrink-0">
+                        {formatDateTime(source.publicationDate, language)}
                       </div>
                     </div>
 
-                    <div className="text-xs text-muted-foreground shrink-0">
-                      {formatDateTime(source.publicationDate, language)}
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      {safeText(source.region) && (
+                        <span className="rounded-full border border-white/10 px-2 py-1">
+                          {source.region}
+                        </span>
+                      )}
+                      {safeText(source.category) && (
+                        <span className="rounded-full border border-white/10 px-2 py-1">
+                          {source.category}
+                        </span>
+                      )}
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {safeText(source.region) && (
-                      <span className="rounded-full border border-white/10 px-2 py-1">
-                        {source.region}
-                      </span>
-                    )}
-                    {safeText(source.category) && (
-                      <span className="rounded-full border border-white/10 px-2 py-1">
-                        {source.category}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </a>
-            ))}
-          </div>
+                </a>
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>
