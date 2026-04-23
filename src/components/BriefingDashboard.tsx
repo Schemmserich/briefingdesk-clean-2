@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BriefingDisplay } from "./BriefingDisplay";
 import { generateCuratedBriefingAction } from "@/app/actions/briefing";
 import {
@@ -378,73 +378,33 @@ export function BriefingDashboard() {
           </div>
         </div>
 
-        <div className="lg:hidden space-y-3 min-w-0">
-          <div className="grid grid-cols-2 gap-3">
-            <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-              <SheetTrigger asChild>
+        <div className="lg:hidden min-w-0">
+          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+            <SheetContent side="bottom" className="h-[88vh] overflow-y-auto overflow-x-hidden">
+              <SheetHeader className="mb-4">
+                <SheetTitle>{t.parameters}</SheetTitle>
+              </SheetHeader>
+
+              <div className="pb-24 max-w-full overflow-x-hidden">
+                <FilterPanel
+                  lang={lang}
+                  setLang={setLang}
+                  params={params}
+                  setParams={setParams}
+                />
+              </div>
+
+              <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background">
                 <Button
-                  variant="outline"
-                  className="h-12 border-white/10 hover:bg-white/5 justify-between min-w-0"
+                  size="lg"
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
+                  onClick={() => setMobileFiltersOpen(false)}
                 >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <SlidersHorizontal className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{t.parameters}</span>
-                  </span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {activeFilterCount}
-                  </span>
+                  Einstellungen übernehmen
                 </Button>
-              </SheetTrigger>
-
-              <SheetContent side="bottom" className="h-[88vh] overflow-y-auto overflow-x-hidden">
-                <SheetHeader className="mb-4">
-                  <SheetTitle>{t.parameters}</SheetTitle>
-                </SheetHeader>
-
-                <div className="pb-24 max-w-full overflow-x-hidden">
-                  <FilterPanel
-                    lang={lang}
-                    setLang={setLang}
-                    params={params}
-                    setParams={setParams}
-                  />
-                </div>
-
-                <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background">
-                  <Button
-                    size="lg"
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
-                    onClick={() => setMobileFiltersOpen(false)}
-                  >
-                    Einstellungen übernehmen
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Button
-              size="lg"
-              className="h-12 bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20"
-              onClick={handleGenerate}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              ) : (
-                <Zap className="w-5 h-5 mr-2" />
-              )}
-              {t.generateBriefing}
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
-              <Save className="w-4 h-4 mr-1.5" /> {t.savePreset}
-            </Button>
-            <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
-              <Zap className="w-4 h-4 mr-1.5 text-accent" /> {t.useMorningPreset}
-            </Button>
-          </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <div className="lg:col-span-8 min-w-0 max-w-full">
