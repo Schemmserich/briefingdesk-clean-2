@@ -28,6 +28,44 @@ import { cn } from "@/lib/utils";
 const categories = ["Politics", "Economy", "Stock Markets", "Technology", "Science", "Health", "Climate"];
 const regions = ["Global", "Europe", "North America", "Asia", "ME&A"];
 
+const categoryLabels: Record<Language, Record<string, string>> = {
+  en: {
+    Politics: "Politics",
+    Economy: "Economy",
+    "Stock Markets": "Stock Markets",
+    Technology: "Technology",
+    Science: "Science",
+    Health: "Health",
+    Climate: "Climate",
+  },
+  de: {
+    Politics: "Politik",
+    Economy: "Wirtschaft",
+    "Stock Markets": "Börse",
+    Technology: "Technologie",
+    Science: "Wissenschaft",
+    Health: "Gesundheit",
+    Climate: "Klima",
+  },
+};
+
+const regionLabels: Record<Language, Record<string, string>> = {
+  en: {
+    Global: "Global",
+    Europe: "Europe",
+    "North America": "North America",
+    Asia: "Asia",
+    "ME&A": "ME&A",
+  },
+  de: {
+    Global: "Global",
+    Europe: "Europa",
+    "North America": "Nordamerika",
+    Asia: "Asien",
+    "ME&A": "Nahost, Afrika",
+  },
+};
+
 type FilterPanelProps = {
   lang: Language;
   setLang: (lang: Language) => void;
@@ -135,20 +173,20 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
 
           <div className="flex flex-wrap gap-2 max-w-full">
             {regions.map((reg) => (
-              <button
-                key={reg}
-                type="button"
-                onClick={() => toggleRegion(reg)}
-                className={cn(
-                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
-                  params.regions.includes(reg)
-                    ? "bg-accent border-accent text-white"
-                    : "border-white/10 text-muted-foreground hover:border-white/20"
-                )}
-              >
-                {reg}
-              </button>
-            ))}
+  <button
+    key={reg}
+    type="button"
+    onClick={() => toggleRegion(reg)}
+    className={cn(
+      "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
+      params.regions.includes(reg)
+        ? "bg-accent border-accent text-white"
+        : "border-white/10 text-muted-foreground hover:border-white/20"
+    )}
+  >
+    {regionLabels[lang][reg] ?? reg}
+  </button>
+))}
           </div>
         </div>
 
@@ -158,21 +196,21 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
           </Label>
 
           <div className="flex flex-wrap gap-2 max-w-full">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => toggleCategory(cat)}
-                className={cn(
-                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
-                  params.categories.includes(cat)
-                    ? "bg-secondary border-primary/40 text-white"
-                    : "border-white/10 text-muted-foreground hover:border-white/20"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
+           {categories.map((cat) => (
+  <button
+    key={cat}
+    type="button"
+    onClick={() => toggleCategory(cat)}
+    className={cn(
+      "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
+      params.categories.includes(cat)
+        ? "bg-secondary border-primary/40 text-white"
+        : "border-white/10 text-muted-foreground hover:border-white/20"
+    )}
+  >
+    {categoryLabels[lang][cat] ?? cat}
+  </button>
+))}
           </div>
         </div>
 

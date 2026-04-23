@@ -4,26 +4,6 @@ import { getFilteredArticles } from "@/lib/db/queries";
 import { generateCuratedBriefing } from "@/ai/flows/generate-curated-briefing";
 import { buildFallbackBriefing } from "@/lib/fallbackBriefing";
 
-type CachedBriefingEntry = {
-  createdAt: number;
-  payload: any;
-};
-
-const briefingCache = new Map<string, CachedBriefingEntry>();
-const CACHE_TTL_MS = 15 * 60 * 1000;
-
-function buildCacheKey(input: any) {
-  return JSON.stringify({
-    language: input.language ?? "en",
-    timeframe: input.timeframe ?? "24h",
-    categories: [...(input.categories ?? [])].sort(),
-    regions: [...(input.regions ?? [])].sort(),
-    briefingType: input.briefingType ?? "Morning Briefing",
-    includeMarketInsights: !!input.includeMarketInsights,
-    includeChangeAnalysis: !!input.includeChangeAnalysis,
-  });
-}
-
 function toPlainObject<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
@@ -62,22 +42,38 @@ function buildSourceMeta(articles: any[]) {
   };
 }
 
+function localizeBriefingInput(input: any) {
+  const categoryMap: Record<string, string> = {
+    Politics: "Politik",
+    Economy: "Wirtschaft",
+    "Stock Markets": "Börse",
+    Technology: "Technologie",
+    Science: "Wissenschaft",
+    Health: "Gesundheit",
+    Climate: "Klima",
+  };
+
+  const regionMap: Record<string, string> = {
+    Global: "Global",
+    Europe: "Europa",
+    "North America": "Nordamerika",
+    Asia: "Asien",
+    "ME&A": "Nahost, Afrika",
+  };
+
+  if (input.language !== "de") {
+    return input;
+  }
+
+  return {
+    ...input,
+    categories: (input.categories ?? []).map((cat: string) => categoryMap[cat] ?? cat),
+    regions: (input.regions ?? []).map((reg: string) => regionMap[reg] ?? reg),
+  };
+}
+
 export async function generateCuratedBriefingAction(input: any) {
   try {
-    const cacheKey = buildCacheKey(input);
-    const cached = briefingCache.get(cacheKey);
-
-    if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
-      return {
-        success: true,
-        data: {
-          ...cached.payload,
-          debugVersion: "ACTION_V3_CACHE",
-        },
-        error: null,
-      };
-    }
-
     const filteredArticles = await getFilteredArticles({
       timeframe: input.timeframe ?? "24h",
       categories: input.categories ?? [],
@@ -100,7 +96,7 @@ export async function generateCuratedBriefingAction(input: any) {
       sourceCounter.set(sourceName, currentCount + 1);
     }
 
-    const articlesForBriefing = selected.slice(0, 8);
+    const articlesForBriefing = selected.slice(0, 10);
 
     console.log("ACTION FILTERED ARTICLES:", articlesForBriefing.length);
     console.log(
@@ -126,21 +122,18 @@ export async function generateCuratedBriefingAction(input: any) {
     const sourceMeta = buildSourceMeta(articlesForBriefing);
 
     try {
+      const localizedInput = localizeBriefingInput(input);
+
       const result = await generateCuratedBriefing({
-        ...input,
+        ...localizedInput,
         articles: articlesForBriefing,
       });
 
       const finalResult = {
         ...toPlainObject(result),
         ...sourceMeta,
-        debugVersion: "ACTION_V3_LIVE",
+        debugVersion: "ACTION_V2_LIVE",
       };
-
-      briefingCache.set(cacheKey, {
-        createdAt: Date.now(),
-        payload: finalResult,
-      });
 
       console.log("ACTION RETURNING AI RESULT:", finalResult);
 
@@ -160,13 +153,8 @@ export async function generateCuratedBriefingAction(input: any) {
       const finalFallback = {
         ...fallbackResult,
         ...sourceMeta,
-        debugVersion: "ACTION_V3_FALLBACK",
+        debugVersion: "ACTION_V2_FALLBACK",
       };
-
-      briefingCache.set(cacheKey, {
-        createdAt: Date.now(),
-        payload: finalFallback,
-      });
 
       console.log("ACTION RETURNING FALLBACK RESULT:", finalFallback);
 
