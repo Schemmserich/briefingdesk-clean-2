@@ -317,7 +317,7 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
 
   if (!isSupported) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 space-y-3 overflow-hidden">
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3 overflow-hidden">
         <div className="text-sm font-semibold text-white">
           {language === "de" ? "Audio-Briefing" : "Audio Briefing"}
         </div>
@@ -337,7 +337,7 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
   );
 
   return (
-   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 space-y-3 overflow-hidden">
+   <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3 overflow-hidden">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
   <div className="text-sm font-semibold text-white">
@@ -373,7 +373,7 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
           </span>
         </div>
 
-        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
           <div
             className="h-full rounded-full bg-primary transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
@@ -381,68 +381,69 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
-        <Button
-          variant="outline"
-          onClick={handlePrevious}
-          disabled={!chapters.length}
-          className="min-h-11 border-white/10 hover:bg-white/5"
-        >
-          <SkipBack className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">
-            {language === "de" ? "Zurück" : "Previous"}
-          </span>
-        </Button>
+     <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center">
+  <Button
+    variant="outline"
+    onClick={handlePrevious}
+    disabled={!chapters.length}
+    className="h-10 w-10 p-0 border-white/10 hover:bg-white/5"
+  >
+    <SkipBack className="w-4 h-4" />
+  </Button>
 
-        <Button
-          onClick={handlePlayPause}
-          className="min-h-12 min-w-12 rounded-full px-4"
-        >
-          {isSpeaking ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-        </Button>
+  <Button
+    onClick={handlePlayPause}
+    className="h-10 rounded-full px-4"
+  >
+    {isSpeaking ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2 ml-0.5" />}
+    {isSpeaking
+      ? language === "de"
+        ? "Pause"
+        : "Pause"
+      : language === "de"
+      ? "Play"
+      : "Play"}
+  </Button>
 
-        <Button
-          variant="outline"
-          onClick={handleNext}
-          disabled={!chapters.length}
-          className="min-h-11 border-white/10 hover:bg-white/5"
-        >
-          <span className="hidden sm:inline">
-            {language === "de" ? "Weiter" : "Next"}
-          </span>
-          <SkipForward className="w-4 h-4 sm:ml-2" />
-        </Button>
-      </div>
+  <Button
+    variant="outline"
+    onClick={handleNext}
+    disabled={!chapters.length}
+    className="h-10 w-10 p-0 border-white/10 hover:bg-white/5"
+  >
+    <SkipForward className="w-4 h-4" />
+  </Button>
+</div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="outline"
-          onClick={stopSpeaking}
-          className="min-h-10 border-white/10 hover:bg-white/5"
-        >
-          <Square className="w-4 h-4 mr-2" />
-          Stop
-        </Button>
+      <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
+  <Button
+    variant="outline"
+    onClick={stopSpeaking}
+    className="h-9 px-3 border-white/10 hover:bg-white/5 text-xs"
+  >
+    <Square className="w-3.5 h-3.5 mr-1.5" />
+    Stop
+  </Button>
 
-        <div className="grid grid-cols-4 gap-2">
-          {[0.9, 1, 1.1, 1.2].map((rate) => (
-            <Button
-              key={rate}
-              type="button"
-              variant={playbackRate === rate ? "default" : "outline"}
-              onClick={() => handleRateChange(rate)}
-              className={cn(
-                "min-h-10 px-0 text-xs",
-                playbackRate !== rate && "border-white/10 hover:bg-white/5"
-              )}
-            >
-              {rate}x
-            </Button>
-          ))}
-        </div>
-      </div>
+  <div className="grid grid-cols-4 gap-2">
+    {[0.9, 1, 1.1, 1.2].map((rate) => (
+      <Button
+        key={rate}
+        type="button"
+        variant={playbackRate === rate ? "default" : "outline"}
+        onClick={() => handleRateChange(rate)}
+        className={cn(
+          "h-9 px-0 text-xs",
+          playbackRate !== rate && "border-white/10 hover:bg-white/5"
+        )}
+      >
+        {rate}x
+      </Button>
+    ))}
+  </div>
+</div>
 
-      <div className="rounded-xl border border-white/10 overflow-hidden">
+      <div className="rounded-lg border border-white/10 overflow-hidden">
         <button
           type="button"
           onClick={() => setShowChapters((prev) => !prev)}

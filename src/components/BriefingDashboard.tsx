@@ -343,7 +343,20 @@ export function BriefingDashboard() {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 max-w-full overflow-x-hidden pb-24 lg:pb-0">
+      <>
+  <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-2">
+      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-headline font-bold text-white tracking-tight">
+        {lang === "de" ? "Briefing-Dashboard" : "Intelligence Dashboard"}
+      </h1>
+      <p className="text-sm sm:text-base lg:text-lg text-muted-foreground max-w-3xl leading-6 sm:leading-7">
+        {lang === "de"
+          ? "Wähle deine Kriterien aus und erstelle in wenigen Sekunden ein professionell kuratiertes Nachrichten-Briefing."
+          : "Select your criteria and generate a professionally curated news briefing in seconds."}
+      </p>
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 max-w-full overflow-x-hidden pb-24 lg:pb-0">
         <div className="hidden lg:block lg:col-span-4 space-y-6 min-w-0">
           <FilterPanel
             lang={lang}
@@ -438,9 +451,38 @@ export function BriefingDashboard() {
             </div>
           )}
         </div>
-      </div>
+          </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="h-12 border-white/10 hover:bg-white/5 shrink-0"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <SlidersHorizontal className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
+
+          <Button
+            size="lg"
+            className="flex-1 h-12 bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20"
+            onClick={handleGenerate}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : (
+              <Zap className="w-5 h-5 mr-2" />
+            )}
+            {t.generateBriefing}
+          </Button>
+        </div>
+      </div>
+    </div>
+  </>
+);
         <div className="mx-auto max-w-7xl">
           <div className="flex items-center gap-3">
             <Button
