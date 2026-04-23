@@ -56,13 +56,20 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
     }));
   };
 
+  const briefingTypeOptions: Array<{ value: BriefingType; label: string }> = [
+    { value: "Ultra Short Update", label: t.briefingTypes.ultra },
+    { value: "Short Update", label: t.briefingTypes.short },
+    { value: "Morning Briefing", label: t.briefingTypes.morning },
+    { value: "Executive Summary", label: t.briefingTypes.executive },
+  ];
+
   return (
-    <Card className="briefing-card border-white/5">
+    <Card className="briefing-card border-white/5 max-w-full overflow-hidden">
       <CardHeader className="border-b border-white/5 pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <Settings2 className="w-5 h-5 text-primary" />
-            {t.parameters}
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2 min-w-0">
+            <Settings2 className="w-5 h-5 text-primary shrink-0" />
+            <span className="truncate">{t.parameters}</span>
           </CardTitle>
 
           <div className="flex gap-1 bg-secondary p-1 rounded-md shrink-0">
@@ -73,7 +80,7 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
                 setParams((p) => ({ ...p, language: "en" }));
               }}
               className={cn(
-                "px-2.5 py-1 text-xs rounded transition-colors",
+                "px-2.5 py-1 text-xs rounded transition-colors min-h-9",
                 lang === "en" ? "bg-primary text-white" : "text-muted-foreground"
               )}
             >
@@ -86,7 +93,7 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
                 setParams((p) => ({ ...p, language: "de" }));
               }}
               className={cn(
-                "px-2.5 py-1 text-xs rounded transition-colors",
+                "px-2.5 py-1 text-xs rounded transition-colors min-h-9",
                 lang === "de" ? "bg-primary text-white" : "text-muted-foreground"
               )}
             >
@@ -96,20 +103,20 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-5 sm:pt-6 space-y-6">
+      <CardContent className="pt-5 sm:pt-6 space-y-6 max-w-full overflow-x-hidden">
         <div className="space-y-3">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Calendar className="w-3 h-3" /> {t.timeframe}
+            <Calendar className="w-3 h-3 shrink-0" /> {t.timeframe}
           </Label>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 max-w-full">
             {Object.entries(t.timeframes).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setParams((p) => ({ ...p, timeframe: key }))}
                 className={cn(
-                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10",
+                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.timeframe === key
                     ? "bg-primary border-primary text-white"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
@@ -123,17 +130,17 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
 
         <div className="space-y-3">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Globe className="w-3 h-3" /> {t.regions}
+            <Globe className="w-3 h-3 shrink-0" /> {t.regions}
           </Label>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 max-w-full">
             {regions.map((reg) => (
               <button
                 key={reg}
                 type="button"
                 onClick={() => toggleRegion(reg)}
                 className={cn(
-                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10",
+                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.regions.includes(reg)
                     ? "bg-accent border-accent text-white"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
@@ -147,17 +154,17 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
 
         <div className="space-y-3">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Layers className="w-3 h-3" /> {t.categories}
+            <Layers className="w-3 h-3 shrink-0" /> {t.categories}
           </Label>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 max-w-full">
             {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => toggleCategory(cat)}
                 className={cn(
-                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10",
+                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.categories.includes(cat)
                     ? "bg-secondary border-primary/40 text-white"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
@@ -169,27 +176,49 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground">
             {t.outputFormat}
           </Label>
 
-          <Select
-            value={params.briefingType}
-            onValueChange={(v) =>
-              setParams((p) => ({ ...p, briefingType: v as BriefingType }))
-            }
-          >
-            <SelectTrigger className="bg-secondary/50 border-white/10 min-h-11">
-              <SelectValue placeholder={t.selectPlaceholder} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Ultra Short Update">{t.briefingTypes.ultra}</SelectItem>
-              <SelectItem value="Short Update">{t.briefingTypes.short}</SelectItem>
-              <SelectItem value="Morning Briefing">{t.briefingTypes.morning}</SelectItem>
-              <SelectItem value="Executive Summary">{t.briefingTypes.executive}</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="hidden sm:block min-w-0">
+            <Select
+              value={params.briefingType}
+              onValueChange={(v) =>
+                setParams((p) => ({ ...p, briefingType: v as BriefingType }))
+              }
+            >
+              <SelectTrigger className="bg-secondary/50 border-white/10 min-h-11 w-full min-w-0">
+                <SelectValue placeholder={t.selectPlaceholder} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Ultra Short Update">{t.briefingTypes.ultra}</SelectItem>
+                <SelectItem value="Short Update">{t.briefingTypes.short}</SelectItem>
+                <SelectItem value="Morning Briefing">{t.briefingTypes.morning}</SelectItem>
+                <SelectItem value="Executive Summary">{t.briefingTypes.executive}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:hidden">
+            {briefingTypeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() =>
+                  setParams((p) => ({ ...p, briefingType: option.value }))
+                }
+                className={cn(
+                  "w-full rounded-xl border px-3 py-3 text-sm text-left transition min-h-12",
+                  params.briefingType === option.value
+                    ? "bg-primary border-primary text-white"
+                    : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-3 pt-1">
@@ -313,8 +342,8 @@ export function BriefingDashboard() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8">
-      <div className="hidden lg:block lg:col-span-4 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 max-w-full overflow-x-hidden">
+      <div className="hidden lg:block lg:col-span-4 space-y-6 min-w-0">
         <FilterPanel
           lang={lang}
           setLang={setLang}
@@ -348,30 +377,30 @@ export function BriefingDashboard() {
         </div>
       </div>
 
-      <div className="lg:hidden space-y-3">
+      <div className="lg:hidden space-y-3 min-w-0">
         <div className="grid grid-cols-2 gap-3">
           <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="outline"
-                className="h-12 border-white/10 hover:bg-white/5 justify-between"
+                className="h-12 border-white/10 hover:bg-white/5 justify-between min-w-0"
               >
-                <span className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4" />
-                  {t.parameters}
+                <span className="flex items-center gap-2 min-w-0">
+                  <SlidersHorizontal className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{t.parameters}</span>
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {activeFilterCount}
                 </span>
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="bottom" className="h-[88vh] overflow-y-auto">
+            <SheetContent side="bottom" className="h-[88vh] overflow-y-auto overflow-x-hidden">
               <SheetHeader className="mb-4">
                 <SheetTitle>{t.parameters}</SheetTitle>
               </SheetHeader>
 
-              <div className="pb-24">
+              <div className="pb-24 max-w-full overflow-x-hidden">
                 <FilterPanel
                   lang={lang}
                   setLang={setLang}
@@ -417,7 +446,7 @@ export function BriefingDashboard() {
         </div>
       </div>
 
-      <div className="lg:col-span-8">
+      <div className="lg:col-span-8 min-w-0 max-w-full">
         {loading ? (
           <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
             <div className="relative">
