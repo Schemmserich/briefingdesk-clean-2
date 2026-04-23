@@ -467,10 +467,10 @@ export function BriefingDashboard() {
               </div>
               <div className="space-y-2 max-w-md">
                 <p className="text-base sm:text-lg font-semibold text-white">
-                  {language === "de" ? "Noch kein Briefing erstellt" : "No briefing generated yet"}
+                  {lang === "de" ? "Noch kein Briefing erstellt" : "No briefing generated yet"}
                 </p>
                 <p className="text-sm sm:text-base text-muted-foreground leading-6">
-                  {language === "de"
+                  {lang === "de"
                     ? "Wähle deine Filter und erstelle anschließend ein kompaktes Nachrichten-Briefing für dein gewähltes Zeitfenster."
                     : "Choose your filters and generate a compact news briefing for your selected time window."}
                 </p>
