@@ -5,7 +5,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navigation />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10" translate="no">
         <div className="mb-10">
           <h1 className="text-4xl font-headline font-bold text-white tracking-tight">Intelligence Dashboard</h1>
           <p className="text-muted-foreground mt-2 text-lg">Select your criteria and generate a professionally curated news briefing in seconds.</p>
