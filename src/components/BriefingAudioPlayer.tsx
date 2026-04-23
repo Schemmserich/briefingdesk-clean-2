@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, Play, Pause, SkipBack, SkipForward, Square } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type BriefingSection = {
   title?: string;
@@ -29,13 +31,6 @@ type Chapter = {
 
 function safeText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function estimateSpeechDurationMs(text: string, rate: number) {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
-  const wordsPerMinute = 150 * rate;
-  const minutes = words / wordsPerMinute;
-  return Math.max(minutes * 60 * 1000, 2000);
 }
 
 function normalizeForSpeech(text: string, language: "de" | "en") {
@@ -66,11 +61,9 @@ function normalizeForSpeech(text: string, language: "de" | "en") {
       [/\bTaiwan\b/g, "Taiwan"],
       [/\bPeking\b/g, "Peking"],
       [/\bXi Jinping\b/g, "Schi Dschinping"],
-      [/\bDonald Trump\b/g, "Donald Trump"],
       [/\bJerome Powell\b/g, "Dscherom Pauell"],
       [/\bNvidia\b/g, "Envidia"],
       [/\bMicrosoft\b/g, "Meikrosoft"],
-      [/\bAlphabet\b/g, "Alphabet"],
       [/\bAmazon\b/g, "Amazon"],
       [/\bApple\b/g, "Äppel"],
       [/\bMeta\b/g, "Meta"],
@@ -184,13 +177,7 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
   const [isSupported, setIsSupported] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showChapters, setShowChapters] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [chapterProgress, setChapterProgress] = useState(0);
-
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const progressTimerRef = useRef<number | null>(null);
-  const chapterStartRef = useRef<number | null>(null);
-  const chapterDurationRef = useRef<number>(0);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -204,12 +191,18 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
       const loadedVoices = synth.getVoices();
       setVoices(loadedVoices);
 
+      const filteredVoices = loadedVoices.filter((v) =>
+        language === "de"
+          ? v.lang.toLowerCase().startsWith("de")
+          : v.lang.toLowerCase().startsWith("en")
+      );
+
       const preferred =
         language === "de"
-          ? loadedVoices.find((v) => v.lang.toLowerCase().startsWith("de"))
-          : loadedVoices.find((v) => v.lang.toLowerCase().startsWith("en"));
+          ? filteredVoices.find((v) => v.lang.toLowerCase().includes("de"))
+          : filteredVoices.find((v) => v.lang.toLowerCase().includes("en"));
 
-      setSelectedVoice(preferred ?? loadedVoices[0] ?? null);
+      setSelectedVoice(preferred ?? filteredVoices[0] ?? loadedVoices[0] ?? null);
     };
 
     loadVoices();
@@ -218,10 +211,6 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
     return () => {
       synth.onvoiceschanged = null;
       synth.cancel();
-      if (progressTimerRef.current) {
-        window.clearInterval(progressTimerRef.current);
-        progressTimerRef.current = null;
-      }
     };
   }, [language]);
 
@@ -230,24 +219,13 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
-      if (progressTimerRef.current) {
-        window.clearInterval(progressTimerRef.current);
-        progressTimerRef.current = null;
-      }
     };
   }, []);
 
   function stopSpeaking() {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-
     window.speechSynthesis.cancel();
     utteranceRef.current = null;
-
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-
     setIsSpeaking(false);
   }
 
@@ -257,11 +235,6 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
 
     const synth = window.speechSynthesis;
     synth.cancel();
-
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
 
     const chapter = chapters[index];
     const utterance = new SpeechSynthesisUtterance(chapter.text);
@@ -278,52 +251,19 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
     utterance.onstart = () => {
       setCurrentChapterIndex(index);
       setIsSpeaking(true);
-      setChapterProgress(0);
-
-      chapterStartRef.current = Date.now();
-      chapterDurationRef.current = estimateSpeechDurationMs(chapter.text, playbackRate);
-
-      progressTimerRef.current = window.setInterval(() => {
-        if (!chapterStartRef.current || !chapterDurationRef.current) return;
-
-        const elapsed = Date.now() - chapterStartRef.current;
-        const currentChapterPercent = Math.min(
-          (elapsed / chapterDurationRef.current) * 100,
-          100
-        );
-
-        setChapterProgress(currentChapterPercent);
-
-        const overallPercent =
-          ((index + currentChapterPercent / 100) / chapters.length) * 100;
-        setProgress(overallPercent);
-      }, 250);
     };
 
     utterance.onend = () => {
-      if (progressTimerRef.current) {
-        window.clearInterval(progressTimerRef.current);
-        progressTimerRef.current = null;
-      }
-
-      setChapterProgress(100);
       const nextIndex = index + 1;
-
       if (nextIndex < chapters.length) {
         speakChapter(nextIndex);
       } else {
-        setProgress(100);
         setIsSpeaking(false);
         utteranceRef.current = null;
       }
     };
 
     utterance.onerror = () => {
-      if (progressTimerRef.current) {
-        window.clearInterval(progressTimerRef.current);
-        progressTimerRef.current = null;
-      }
-
       setIsSpeaking(false);
       utteranceRef.current = null;
     };
@@ -372,13 +312,16 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
     return null;
   }
 
+  const progressPercent =
+    chapters.length > 0 ? ((currentChapterIndex + 1) / chapters.length) * 100 : 0;
+
   if (!isSupported) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
         <div className="text-sm font-semibold text-white">
           {language === "de" ? "Audio-Briefing" : "Audio Briefing"}
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground leading-6">
           {language === "de"
             ? "Dieses Gerät oder dieser Browser unterstützt die integrierte Sprachwiedergabe nicht."
             : "This device or browser does not support built-in speech playback."}
@@ -387,114 +330,141 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
     );
   }
 
+  const filteredVoices = voices.filter((v) =>
+    language === "de"
+      ? v.lang.toLowerCase().startsWith("de")
+      : v.lang.toLowerCase().startsWith("en")
+  );
+
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4 overflow-hidden">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <div className="text-sm font-semibold text-white">
             {language === "de" ? "Audio-Briefing" : "Audio Briefing"}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground mt-1">
             {language === "de"
-              ? "Kostenlose Geräte-Stimme mit Kapitelsprüngen"
-              : "Free device voice with chapter jumping"}
+              ? "Kostenlose Geräte-Stimme mit Kapiteln"
+              : "Free device voice with chapters"}
           </div>
         </div>
 
-        {voices.length > 0 && (
+        {filteredVoices.length > 0 && (
           <select
-            className="bg-secondary/50 border border-white/10 rounded-md px-2 py-1 text-xs text-white max-w-full"
+            className="bg-secondary/50 border border-white/10 rounded-md px-3 py-2 text-xs text-white min-h-10 w-full sm:w-auto"
             value={selectedVoice?.name ?? ""}
             onChange={(e) => {
-              const voice = voices.find((v) => v.name === e.target.value) ?? null;
+              const voice = filteredVoices.find((v) => v.name === e.target.value) ?? null;
               setSelectedVoice(voice);
             }}
           >
-            {voices
-              .filter((v) =>
-                language === "de"
-                  ? v.lang.toLowerCase().startsWith("de")
-                  : v.lang.toLowerCase().startsWith("en")
-              )
-              .map((voice) => (
-                <option key={`${voice.name}-${voice.lang}`} value={voice.name}>
-                  {voice.name}
-                </option>
-              ))}
+            {filteredVoices.map((voice) => (
+              <option key={`${voice.name}-${voice.lang}`} value={voice.name}>
+                {voice.name}
+              </option>
+            ))}
           </select>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={handlePlayPause}>
-          {isSpeaking
-            ? "Pause"
-            : language === "de"
-            ? "Abspielen"
-            : "Play"}
-        </Button>
-
-        <Button variant="outline" onClick={handlePrevious} disabled={!chapters.length}>
-          {language === "de" ? "Zurück" : "Previous"}
-        </Button>
-
-        <Button variant="outline" onClick={handleNext} disabled={!chapters.length}>
-          {language === "de" ? "Weiter" : "Next"}
-        </Button>
-
-        <Button variant="outline" onClick={stopSpeaking}>
-          Stop
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {[0.9, 1, 1.1, 1.2].map((rate) => (
-          <Button
-            key={rate}
-            type="button"
-            variant={playbackRate === rate ? "default" : "outline"}
-            onClick={() => handleRateChange(rate)}
-          >
-            {rate}x
-          </Button>
-        ))}
-      </div>
-
       <div className="space-y-2">
-        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-200"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            {language === "de"
-              ? `Gesamtfortschritt: ${Math.round(progress)}%`
-              : `Overall progress: ${Math.round(progress)}%`}
+            {language === "de" ? "Kapitel" : "Chapter"} {Math.min(currentChapterIndex + 1, chapters.length)} / {chapters.length}
           </span>
           <span>
-            {language === "de"
-              ? `Kapitel: ${Math.round(chapterProgress)}%`
-              : `Chapter: ${Math.round(chapterProgress)}%`}
+            {Math.round(progressPercent)}%
           </span>
+        </div>
+
+        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
 
-      <div className="rounded-lg border border-white/10 overflow-hidden">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+        <Button
+          variant="outline"
+          onClick={handlePrevious}
+          disabled={!chapters.length}
+          className="min-h-11 border-white/10 hover:bg-white/5"
+        >
+          <SkipBack className="w-4 h-4 mr-2" />
+          <span className="hidden sm:inline">
+            {language === "de" ? "Zurück" : "Previous"}
+          </span>
+        </Button>
+
+        <Button
+          onClick={handlePlayPause}
+          className="min-h-12 min-w-12 rounded-full px-4"
+        >
+          {isSpeaking ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={handleNext}
+          disabled={!chapters.length}
+          className="min-h-11 border-white/10 hover:bg-white/5"
+        >
+          <span className="hidden sm:inline">
+            {language === "de" ? "Weiter" : "Next"}
+          </span>
+          <SkipForward className="w-4 h-4 sm:ml-2" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          variant="outline"
+          onClick={stopSpeaking}
+          className="min-h-10 border-white/10 hover:bg-white/5"
+        >
+          <Square className="w-4 h-4 mr-2" />
+          Stop
+        </Button>
+
+        <div className="grid grid-cols-4 gap-2">
+          {[0.9, 1, 1.1, 1.2].map((rate) => (
+            <Button
+              key={rate}
+              type="button"
+              variant={playbackRate === rate ? "default" : "outline"}
+              onClick={() => handleRateChange(rate)}
+              className={cn(
+                "min-h-10 px-0 text-xs",
+                playbackRate !== rate && "border-white/10 hover:bg-white/5"
+              )}
+            >
+              {rate}x
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/10 overflow-hidden">
         <button
           type="button"
           onClick={() => setShowChapters((prev) => !prev)}
-          className="w-full px-3 py-2 border-b border-white/10 text-left text-xs uppercase tracking-wider text-muted-foreground hover:bg-white/5"
+          className="w-full flex items-center justify-between px-3 py-3 text-left hover:bg-white/5 transition"
         >
-          {language === "de"
-            ? showChapters
-              ? "Kapitel ausblenden"
-              : "Kapitel anzeigen"
-            : showChapters
-            ? "Hide chapters"
-            : "Show chapters"}
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              {language === "de" ? "Kapitel" : "Chapters"}
+            </div>
+            <div className="text-sm text-white mt-1">
+              {chapters[currentChapterIndex]?.title ?? "—"}
+            </div>
+          </div>
+
+          <div className="text-muted-foreground shrink-0">
+            {showChapters ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
         </button>
 
         {showChapters && (
@@ -526,8 +496,4 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
       </div>
     </div>
   );
-}
-
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
 }
