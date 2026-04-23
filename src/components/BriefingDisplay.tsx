@@ -28,6 +28,7 @@ type UsedSource = {
 type BriefingDisplayData = {
   mainTitle?: string;
   overviewParagraph?: string;
+briefingType?: string;
   confidenceScore?: number;
   sections?: BriefingSection[];
   whyMarketsCare?: string;
@@ -262,8 +263,8 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
             </div>
 
             <h1 className="text-2xl sm:text-3xl xl:text-4xl font-headline font-bold text-white leading-tight break-words">
-              {briefing.mainTitle}
-            </h1>
+  {[briefing.briefingType, briefing.mainTitle].filter(Boolean).join(": ")}
+</h1>
 
             <p className="text-base sm:text-lg xl:text-xl text-muted-foreground leading-7 sm:leading-8 font-medium">
               {briefing.overviewParagraph}
