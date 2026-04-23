@@ -69,3 +69,18 @@
     @apply rounded-2xl border border-border/70 bg-card/70 shadow-xl backdrop-blur-md;
   }
 }
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Database, History, Newspaper } from "lucide-react";
+import { LayoutDashboard, History, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -15,38 +15,47 @@ export function Navigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="glass-morphism h-16 px-6 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <Newspaper className="w-5 h-5 text-white" />
-        </div>
-        <span className="text-xl font-headline font-bold text-white tracking-tight">
-          Briefing<span className="text-accent">Desk</span>
-        </span>
-      </div>
-      
-      <div className="flex items-center gap-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-medium",
-                isActive 
-                  ? "bg-primary/20 text-primary-foreground border border-primary/20" 
-                  : "text-muted-foreground hover:text-white hover:bg-white/5"
-              )}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
+    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70 overflow-x-hidden">
+      <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
+        <div className="flex h-14 items-center justify-between gap-3 min-w-0">
+          <Link
+            href="/"
+            className="min-w-0 shrink flex items-center gap-2 overflow-hidden"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary font-bold">
+              N
+            </div>
+            <span className="truncate text-base sm:text-xl font-headline font-bold text-white tracking-tight">
+              BriefingDesk
+            </span>
+          </Link>
 
-      <div className="w-8" /> {/* Spacer */}
-    </nav>
+          <nav className="min-w-0 max-w-full overflow-hidden">
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex shrink-0 items-center gap-2 rounded-md px-2.5 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap",
+                      isActive
+                        ? "bg-primary text-white"
+                        : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+      </div>
+    </header>
   );
 }
