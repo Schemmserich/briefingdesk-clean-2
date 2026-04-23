@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BriefingAudioPlayer } from "@/components/BriefingAudioPlayer";
 import { i18n } from "@/lib/i18n";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type Language = "de" | "en";
 
@@ -124,7 +123,6 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("sanctions") ||
     text.includes("president") ||
     text.includes("minister") ||
-    text.includes("loan for ukraine") ||
     text.includes("geopolitical")
   ) {
     return language === "de" ? "Politik" : "Politics";
@@ -135,7 +133,6 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("markets") ||
     text.includes("stock") ||
     text.includes("börse") ||
-    text.includes("börsen") ||
     text.includes("aktien") ||
     text.includes("equities") ||
     text.includes("investor") ||
@@ -153,14 +150,11 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("economy") ||
     text.includes("economic") ||
     text.includes("inflation") ||
-    text.includes("gdp") ||
     text.includes("exports") ||
     text.includes("import") ||
-    text.includes("zinsen") ||
     text.includes("interest rate") ||
     text.includes("central bank") ||
     text.includes("konjunktur") ||
-    text.includes("unternehmen") ||
     text.includes("earnings")
   ) {
     return language === "de" ? "Wirtschaft" : "Economy";
@@ -193,7 +187,6 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("health") ||
     text.includes("medizin") ||
     text.includes("medical") ||
-    text.includes("disease") ||
     text.includes("hospital")
   ) {
     return language === "de" ? "Gesundheit" : "Health";
@@ -203,8 +196,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("climate") ||
     text.includes("klima") ||
     text.includes("emissions") ||
-    text.includes("co2") ||
-    text.includes("energy transition")
+    text.includes("co2")
   ) {
     return language === "de" ? "Klima" : "Climate";
   }
@@ -212,11 +204,40 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
   return language === "de" ? "Allgemein" : "General";
 }
 
+function buildFullText(briefing: BriefingDisplayData) {
+  const parts: string[] = [];
+
+  const overview = safeText(briefing.overviewParagraph);
+  if (overview) parts.push(overview);
+
+  for (const section of briefing.sections ?? []) {
+    const title = safeText(section.title);
+    const content = safeText(section.content);
+
+    if (title && content) {
+      parts.push(`${title}: ${content}`);
+    } else if (content) {
+      parts.push(content);
+    }
+  }
+
+  const whyMarketsCare = safeText(briefing.whyMarketsCare);
+  if (whyMarketsCare) parts.push(whyMarketsCare);
+
+  const whatChanged = safeText(briefing.whatChanged);
+  if (whatChanged) parts.push(whatChanged);
+
+  return parts.join("\n\n");
+}
+
 export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
   const t = i18n[language];
   const sections = briefing.sections ?? [];
   const sources = briefing.usedSources ?? [];
   const [showSources, setShowSources] = useState(false);
+  const [showFullText, setShowFullText] = useState(false);
+
+  const fullText = useMemo(() => buildFullText(briefing), [briefing]);
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-full overflow-x-hidden">
@@ -277,6 +298,41 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
         }}
         language={language}
       />
+
+      {fullText && (
+        <section className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowFullText((prev) => !prev)}
+            className="w-full flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:bg-white/[0.05]"
+          >
+            <div className="min-w-0">
+              <h3 className="text-sm uppercase tracking-[0.2em] font-bold text-muted-foreground">
+                {language === "de" ? "Gesamttext" : "Full Text"}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                {language === "de"
+                  ? "Zusammenhängende Fließtext-Ansicht"
+                  : "Continuous reading view"}
+              </p>
+            </div>
+
+            <div className="shrink-0 text-muted-foreground">
+              {showFullText ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </div>
+          </button>
+
+          {showFullText && (
+            <Card className="briefing-card">
+              <CardContent className="p-4 sm:p-6">
+                <div className="whitespace-pre-line text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8">
+                  {fullText}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+      )}
 
       {sections.length > 0 && (
         <section className="space-y-4 sm:space-y-5">

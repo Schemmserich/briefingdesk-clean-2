@@ -317,7 +317,7 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
 
   if (!isSupported) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 space-y-3 overflow-hidden">
         <div className="text-sm font-semibold text-white">
           {language === "de" ? "Audio-Briefing" : "Audio Briefing"}
         </div>
@@ -337,18 +337,13 @@ export function BriefingAudioPlayer({ briefing, language }: Props) {
   );
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 space-y-4 overflow-hidden">
+   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 space-y-3 overflow-hidden">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-white">
-            {language === "de" ? "Audio-Briefing" : "Audio Briefing"}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {language === "de"
-              ? "Kostenlose Geräte-Stimme mit Kapiteln"
-              : "Free device voice with chapters"}
-          </div>
-        </div>
+  <div className="text-sm font-semibold text-white">
+    {language === "de" ? "Audio-Briefing" : "Audio Briefing"}
+  </div>
+</div>
 
         {filteredVoices.length > 0 && (
           <select
