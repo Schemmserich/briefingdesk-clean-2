@@ -342,29 +342,100 @@ export function BriefingDashboard() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 max-w-full overflow-x-hidden">
-      <div className="hidden lg:block lg:col-span-4 space-y-6 min-w-0">
-        <FilterPanel
-          lang={lang}
-          setLang={setLang}
-          params={params}
-          setParams={setParams}
-        />
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 max-w-full overflow-x-hidden pb-24 lg:pb-0">
+        <div className="hidden lg:block lg:col-span-4 space-y-6 min-w-0">
+          <FilterPanel
+            lang={lang}
+            setLang={setLang}
+            params={params}
+            setParams={setParams}
+          />
 
-        <div className="grid grid-cols-1 gap-3">
-          <Button
-            size="lg"
-            className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 shadow-xl shadow-primary/20"
-            onClick={handleGenerate}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            ) : (
-              <Zap className="w-5 h-5 mr-2" />
-            )}
-            {t.generateBriefing}
-          </Button>
+          <div className="grid grid-cols-1 gap-3">
+            <Button
+              size="lg"
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 shadow-xl shadow-primary/20"
+              onClick={handleGenerate}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              ) : (
+                <Zap className="w-5 h-5 mr-2" />
+              )}
+              {t.generateBriefing}
+            </Button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
+                <Save className="w-4 h-4 mr-1.5" /> {t.savePreset}
+              </Button>
+              <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
+                <Zap className="w-4 h-4 mr-1.5 text-accent" /> {t.useMorningPreset}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:hidden space-y-3 min-w-0">
+          <div className="grid grid-cols-2 gap-3">
+            <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-12 border-white/10 hover:bg-white/5 justify-between min-w-0"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <SlidersHorizontal className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{t.parameters}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {activeFilterCount}
+                  </span>
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent side="bottom" className="h-[88vh] overflow-y-auto overflow-x-hidden">
+                <SheetHeader className="mb-4">
+                  <SheetTitle>{t.parameters}</SheetTitle>
+                </SheetHeader>
+
+                <div className="pb-24 max-w-full overflow-x-hidden">
+                  <FilterPanel
+                    lang={lang}
+                    setLang={setLang}
+                    params={params}
+                    setParams={setParams}
+                  />
+                </div>
+
+                <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background">
+                  <Button
+                    size="lg"
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
+                    onClick={() => setMobileFiltersOpen(false)}
+                  >
+                    Einstellungen übernehmen
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Button
+              size="lg"
+              className="h-12 bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20"
+              onClick={handleGenerate}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              ) : (
+                <Zap className="w-5 h-5 mr-2" />
+              )}
+              {t.generateBriefing}
+            </Button>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
@@ -375,99 +446,68 @@ export function BriefingDashboard() {
             </Button>
           </div>
         </div>
-      </div>
 
-      <div className="lg:hidden space-y-3 min-w-0">
-        <div className="grid grid-cols-2 gap-3">
-          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-12 border-white/10 hover:bg-white/5 justify-between min-w-0"
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <SlidersHorizontal className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{t.parameters}</span>
-                </span>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {activeFilterCount}
-                </span>
-              </Button>
-            </SheetTrigger>
-
-            <SheetContent side="bottom" className="h-[88vh] overflow-y-auto overflow-x-hidden">
-              <SheetHeader className="mb-4">
-                <SheetTitle>{t.parameters}</SheetTitle>
-              </SheetHeader>
-
-              <div className="pb-24 max-w-full overflow-x-hidden">
-                <FilterPanel
-                  lang={lang}
-                  setLang={setLang}
-                  params={params}
-                  setParams={setParams}
-                />
+        <div className="lg:col-span-8 min-w-0 max-w-full">
+          {loading ? (
+            <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                <Newspaper className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-primary" />
               </div>
-
-              <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background">
-                <Button
-                  size="lg"
-                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
-                  onClick={() => setMobileFiltersOpen(false)}
-                >
-                  Einstellungen übernehmen
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <Button
-            size="lg"
-            className="h-12 bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20"
-            onClick={handleGenerate}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            ) : (
-              <Zap className="w-5 h-5 mr-2" />
-            )}
-            {t.generateBriefing}
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
-            <Save className="w-4 h-4 mr-1.5" /> {t.savePreset}
-          </Button>
-          <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
-            <Zap className="w-4 h-4 mr-1.5 text-accent" /> {t.useMorningPreset}
-          </Button>
-        </div>
-      </div>
-
-      <div className="lg:col-span-8 min-w-0 max-w-full">
-        {loading ? (
-          <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-              <Newspaper className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-primary" />
+              <p className="text-base sm:text-lg font-medium text-muted-foreground animate-pulse">
+                {t.loading}
+              </p>
             </div>
-            <p className="text-base sm:text-lg font-medium text-muted-foreground animate-pulse">
-              {t.loading}
-            </p>
-          </div>
-        ) : result ? (
-          <BriefingDisplay briefing={result} language={lang} />
-        ) : (
-          <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
-            <Newspaper className="w-12 h-12 text-white/10" />
-            <p className="text-sm sm:text-base text-muted-foreground">
-              {t.noBriefings}
-            </p>
-          </div>
-        )}
+          ) : result ? (
+            <BriefingDisplay briefing={result} language={lang} />
+          ) : (
+            <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
+              <div className="w-14 h-14 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
+                <Newspaper className="w-7 h-7 text-white/20" />
+              </div>
+              <div className="space-y-2 max-w-md">
+                <p className="text-base sm:text-lg font-semibold text-white">
+                  {language === "de" ? "Noch kein Briefing erstellt" : "No briefing generated yet"}
+                </p>
+                <p className="text-sm sm:text-base text-muted-foreground leading-6">
+                  {language === "de"
+                    ? "Wähle deine Filter und erstelle anschließend ein kompaktes Nachrichten-Briefing für dein gewähltes Zeitfenster."
+                    : "Choose your filters and generate a compact news briefing for your selected time window."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="h-12 border-white/10 hover:bg-white/5 shrink-0"
+              onClick={() => setMobileFiltersOpen(true)}
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              Filter
+            </Button>
+
+            <Button
+              size="lg"
+              className="flex-1 h-12 bg-primary hover:bg-primary/90 text-white font-bold shadow-xl shadow-primary/20"
+              onClick={handleGenerate}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              ) : (
+                <Zap className="w-5 h-5 mr-2" />
+              )}
+              {t.generateBriefing}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
