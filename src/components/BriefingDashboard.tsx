@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BriefingDisplay } from "./BriefingDisplay";
 import { generateCuratedBriefingAction } from "@/app/actions/briefing";
-import { saveAutoBriefing, saveManualBriefing } from "@/lib/briefingArchive";
+import { saveAutoBriefing } from "@/lib/briefingArchive";
 import {
   Loader2,
   Zap,
@@ -21,7 +21,6 @@ import {
   Settings2,
   Newspaper,
   SlidersHorizontal,
-  Archive,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -67,14 +66,25 @@ const regionLabels: Record<Language, Record<string, string>> = {
   },
 };
 
+type DashboardParams = {
+  language: Language;
+  timeframe: string;
+  categories: string[];
+  regions: string[];
+  briefingType: BriefingType | "";
+  includeMarketInsights: boolean;
+  includeChangeAnalysis: boolean;
+};
+
 type FilterPanelProps = {
   lang: Language;
   setLang: (lang: Language) => void;
-  params: BriefingRequest;
-  setParams: React.Dispatch<React.SetStateAction<BriefingRequest>>;
+  params: DashboardParams;
+  setParams: React.Dispatch<React.SetStateAction<DashboardParams>>;
+  showValidation: boolean;
 };
 
-function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
+function FilterPanel({ lang, setLang, params, setParams, showValidation }: FilterPanelProps) {
   const t = i18n[lang];
 
   const toggleCategory = (cat: string) => {
@@ -101,6 +111,18 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
     { value: "Morning Briefing", label: t.briefingTypes.morning },
     { value: "Executive Summary", label: t.briefingTypes.executive },
   ];
+
+  const timeframeMissing = showValidation && !params.timeframe;
+  const regionsMissing = showValidation && params.regions.length === 0;
+  const categoriesMissing = showValidation && params.categories.length === 0;
+  const formatMissing = showValidation && !params.briefingType;
+
+  function labelClass(isError: boolean) {
+    return cn(
+      "text-xs uppercase tracking-wider flex items-center gap-2",
+      isError ? "text-red-400" : "text-muted-foreground"
+    );
+  }
 
   return (
     <Card className="briefing-card border-white/5 max-w-full overflow-hidden">
@@ -144,7 +166,7 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
 
       <CardContent className="pt-5 sm:pt-6 space-y-6 max-w-full overflow-x-hidden">
         <div className="space-y-3">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Label className={labelClass(timeframeMissing)}>
             <Calendar className="w-3 h-3 shrink-0" /> {t.timeframe}
           </Label>
 
@@ -158,6 +180,8 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
                   "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.timeframe === key
                     ? "bg-primary border-primary text-white"
+                    : timeframeMissing
+                    ? "border-red-400/40 text-red-300 hover:border-red-400/60"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
                 )}
               >
@@ -165,10 +189,18 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
               </button>
             ))}
           </div>
+
+          {timeframeMissing && (
+            <p className="text-xs text-red-400">
+              {lang === "de"
+                ? "Bitte wähle zuerst ein Zeitfenster aus."
+                : "Please select a timeframe first."}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Label className={labelClass(regionsMissing)}>
             <Globe className="w-3 h-3 shrink-0" /> {t.regions}
           </Label>
 
@@ -182,6 +214,8 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
                   "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.regions.includes(reg)
                     ? "bg-accent border-accent text-white"
+                    : regionsMissing
+                    ? "border-red-400/40 text-red-300 hover:border-red-400/60"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
                 )}
               >
@@ -189,10 +223,18 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
               </button>
             ))}
           </div>
+
+          {regionsMissing && (
+            <p className="text-xs text-red-400">
+              {lang === "de"
+                ? "Bitte wähle mindestens eine Region aus."
+                : "Please select at least one region."}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Label className={labelClass(categoriesMissing)}>
             <Layers className="w-3 h-3 shrink-0" /> {t.categories}
           </Label>
 
@@ -206,6 +248,8 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
                   "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.categories.includes(cat)
                     ? "bg-secondary border-primary/40 text-white"
+                    : categoriesMissing
+                    ? "border-red-400/40 text-red-300 hover:border-red-400/60"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
                 )}
               >
@@ -213,22 +257,35 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
               </button>
             ))}
           </div>
+
+          {categoriesMissing && (
+            <p className="text-xs text-red-400">
+              {lang === "de"
+                ? "Bitte wähle mindestens eine Kategorie aus."
+                : "Please select at least one category."}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3 min-w-0">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+          <Label className={labelClass(formatMissing)}>
             {t.outputFormat}
           </Label>
 
           <div className="hidden sm:block min-w-0">
             <Select
-              value={params.briefingType}
+              value={params.briefingType || undefined}
               onValueChange={(v) =>
                 setParams((p) => ({ ...p, briefingType: v as BriefingType }))
               }
             >
-              <SelectTrigger className="bg-secondary/50 border-white/10 min-h-11 w-full min-w-0">
-                <SelectValue placeholder={t.selectPlaceholder} />
+              <SelectTrigger
+                className={cn(
+                  "bg-secondary/50 min-h-11 w-full min-w-0",
+                  formatMissing ? "border-red-400/40 text-red-300" : "border-white/10"
+                )}
+              >
+                <SelectValue placeholder={lang === "de" ? "Bitte auswählen" : "Please select"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Ultra Short Update">{t.briefingTypes.ultra}</SelectItem>
@@ -251,6 +308,8 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
                   "w-full rounded-xl border px-3 py-3 text-sm text-left transition min-h-12",
                   params.briefingType === option.value
                     ? "bg-primary border-primary text-white"
+                    : formatMissing
+                    ? "border-red-400/40 bg-red-500/5 text-red-300 hover:bg-red-500/10"
                     : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/5 hover:text-white"
                 )}
               >
@@ -258,13 +317,28 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
               </button>
             ))}
           </div>
+
+          {formatMissing && (
+            <p className="text-xs text-red-400">
+              {lang === "de"
+                ? "Bitte wähle ein Ausgabeformat aus."
+                : "Please select an output format."}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3 pt-1">
           <div className="flex items-center justify-between gap-3 bg-white/5 p-3 rounded-lg min-h-14">
-            <Label htmlFor="market-insights" className="text-sm cursor-pointer leading-snug">
-              {t.marketInsights}
-            </Label>
+            <div className="space-y-1">
+              <Label htmlFor="market-insights" className="text-sm cursor-pointer leading-snug">
+                {t.marketInsights}
+              </Label>
+              <p className="text-xs text-muted-foreground leading-5">
+                {lang === "de"
+                  ? "Fügt einen Abschnitt hinzu, warum die Themen für Märkte und Anleger relevant sind."
+                  : "Adds a section explaining why the topics matter for markets and investors."}
+              </p>
+            </div>
             <Checkbox
               id="market-insights"
               checked={params.includeMarketInsights}
@@ -275,9 +349,16 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
           </div>
 
           <div className="flex items-center justify-between gap-3 bg-white/5 p-3 rounded-lg min-h-14">
-            <Label htmlFor="change-analysis" className="text-sm cursor-pointer leading-snug">
-              {t.changeAnalysis}
-            </Label>
+            <div className="space-y-1">
+              <Label htmlFor="change-analysis" className="text-sm cursor-pointer leading-snug">
+                {t.changeAnalysis}
+              </Label>
+              <p className="text-xs text-muted-foreground leading-5">
+                {lang === "de"
+                  ? "Hebt hervor, was sich im gewählten Zeitfenster tatsächlich verändert hat."
+                  : "Highlights what actually changed in the selected time window."}
+              </p>
+            </div>
             <Checkbox
               id="change-analysis"
               checked={params.includeChangeAnalysis}
@@ -293,18 +374,19 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
 }
 
 export function BriefingDashboard() {
-  const [lang, setLang] = useState<Language>("en");
+  const [lang, setLang] = useState<Language>("de");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BriefingResult | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [showValidation, setShowValidation] = useState(false);
   const { toast } = useToast();
 
-  const [params, setParams] = useState<BriefingRequest>({
-    language: "en",
-    timeframe: "24h",
-    categories: ["Politics", "Economy", "Stock Markets", "Science"],
-    regions: ["Global"],
-    briefingType: "Morning Briefing",
+  const [params, setParams] = useState<DashboardParams>({
+    language: "de",
+    timeframe: "",
+    categories: [],
+    regions: [],
+    briefingType: "",
     includeMarketInsights: true,
     includeChangeAnalysis: true,
   });
@@ -317,27 +399,68 @@ export function BriefingDashboard() {
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    count += params.timeframe ? 1 : 0;
     count += params.categories.length;
     count += params.regions.length;
-    if (params.includeMarketInsights) count += 1;
-    if (params.includeChangeAnalysis) count += 1;
+    count += params.briefingType ? 1 : 0;
+    count += params.includeMarketInsights ? 1 : 0;
+    count += params.includeChangeAnalysis ? 1 : 0;
     return count;
   }, [params]);
 
+  function validateParams() {
+    return {
+      timeframe: !!params.timeframe,
+      regions: params.regions.length > 0,
+      categories: params.categories.length > 0,
+      briefingType: !!params.briefingType,
+    };
+  }
+
   const handleGenerate = async () => {
+    const validation = validateParams();
+    const isValid = Object.values(validation).every(Boolean);
+
+    if (!isValid) {
+      setShowValidation(true);
+
+      toast({
+        variant: "destructive",
+        title: lang === "de" ? "Einstellungen unvollständig" : "Settings incomplete",
+        description:
+          lang === "de"
+            ? "Bitte wähle zuerst Zeitfenster, mindestens eine Region, mindestens eine Kategorie und ein Ausgabeformat aus."
+            : "Please select a timeframe, at least one region, at least one category, and an output format first.",
+      });
+
+      return;
+    }
+
     setLoading(true);
     setResult(null);
 
     try {
-      const response = await generateCuratedBriefingAction(params);
+      const payload: BriefingRequest = {
+        language: params.language,
+        timeframe: params.timeframe,
+        categories: params.categories,
+        regions: params.regions,
+        briefingType: params.briefingType as BriefingType,
+        includeMarketInsights: params.includeMarketInsights,
+        includeChangeAnalysis: params.includeChangeAnalysis,
+      };
 
-      console.log("FRONTEND RESPONSE:", response);
+      const response = await generateCuratedBriefingAction(payload);
 
       if (!response?.success) {
         toast({
           variant: "destructive",
           title: lang === "de" ? "Fehler" : "Error",
-          description: response?.error || (lang === "de" ? "Briefing konnte nicht erstellt werden." : "Failed to generate briefing."),
+          description:
+            response?.error ||
+            (lang === "de"
+              ? "Briefing konnte nicht erstellt werden."
+              : "Failed to generate briefing."),
         });
         return;
       }
@@ -347,7 +470,7 @@ export function BriefingDashboard() {
 
       saveAutoBriefing({
         language: lang,
-        params,
+        params: payload,
         briefing: briefingData,
       });
 
@@ -359,8 +482,6 @@ export function BriefingDashboard() {
             : "Briefing generated and automatically saved to archive.",
       });
     } catch (error: any) {
-      console.error(error);
-
       const isUnavailable =
         error.message?.includes("503") ||
         error.message?.includes("high demand");
@@ -401,39 +522,6 @@ export function BriefingDashboard() {
     }
   };
 
-  const handleSaveCurrentBriefing = () => {
-    if (!result) return;
-
-    const suggestedName =
-      params.briefingType && result.mainTitle
-        ? `${params.briefingType}: ${result.mainTitle}`
-        : result.mainTitle || (lang === "de" ? "Gespeichertes Briefing" : "Saved Briefing");
-
-    const enteredName = window.prompt(
-      lang === "de" ? "Bitte Namen für das Briefing eingeben:" : "Please enter a name for the briefing:",
-      suggestedName
-    );
-
-    if (!enteredName || !enteredName.trim()) {
-      return;
-    }
-
-    saveManualBriefing({
-      language: lang,
-      params,
-      briefing: result,
-      name: enteredName.trim(),
-    });
-
-    toast({
-      title: lang === "de" ? "Gespeichert" : "Saved",
-      description:
-        lang === "de"
-          ? "Das Briefing wurde im Archiv gespeichert."
-          : "The briefing has been saved to the archive.",
-    });
-  };
-
   return (
     <>
       <div className="space-y-4 sm:space-y-6">
@@ -455,9 +543,18 @@ export function BriefingDashboard() {
               setLang={setLang}
               params={params}
               setParams={setParams}
+              showValidation={showValidation}
             />
 
             <div className="grid grid-cols-1 gap-3">
+              {showValidation && (
+                <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 leading-6">
+                  {lang === "de"
+                    ? "Die Einstellungen sind noch nicht vollständig. Bitte wähle zuerst Zeitfenster, Region, Kategorie und Ausgabeformat aus."
+                    : "The settings are not complete yet. Please choose timeframe, region, category, and output format first."}
+                </div>
+              )}
+
               <Button
                 size="lg"
                 className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 shadow-xl shadow-primary/20"
@@ -471,17 +568,6 @@ export function BriefingDashboard() {
                 )}
                 {t.generateBriefing}
               </Button>
-
-              {result && (
-                <Button
-                  variant="outline"
-                  className="border-white/10 hover:bg-white/5 h-10"
-                  onClick={handleSaveCurrentBriefing}
-                >
-                  <Archive className="w-4 h-4 mr-2" />
-                  {lang === "de" ? "Briefing speichern" : "Save briefing"}
-                </Button>
-              )}
             </div>
           </div>
 
@@ -492,27 +578,25 @@ export function BriefingDashboard() {
                   <SheetTitle>{t.parameters}</SheetTitle>
                 </SheetHeader>
 
-                <div className="pb-24 max-w-full overflow-x-hidden">
+                <div className="pb-24 max-w-full overflow-x-hidden space-y-4">
                   <FilterPanel
                     lang={lang}
                     setLang={setLang}
                     params={params}
                     setParams={setParams}
+                    showValidation={showValidation}
                   />
+
+                  {showValidation && (
+                    <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 leading-6">
+                      {lang === "de"
+                        ? "Die Einstellungen sind noch nicht vollständig. Bitte wähle zuerst Zeitfenster, Region, Kategorie und Ausgabeformat aus."
+                        : "The settings are not complete yet. Please choose timeframe, region, category, and output format first."}
+                    </div>
+                  )}
                 </div>
 
-                <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background space-y-3">
-                  {result && (
-                    <Button
-                      variant="outline"
-                      className="w-full border-white/10 hover:bg-white/5 h-11"
-                      onClick={handleSaveCurrentBriefing}
-                    >
-                      <Archive className="w-4 h-4 mr-2" />
-                      {lang === "de" ? "Briefing speichern" : "Save briefing"}
-                    </Button>
-                  )}
-
+                <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background">
                   <Button
                     size="lg"
                     className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
@@ -537,20 +621,7 @@ export function BriefingDashboard() {
                 </p>
               </div>
             ) : result ? (
-              <div className="space-y-3">
-                <div className="lg:hidden">
-                  <Button
-                    variant="outline"
-                    className="w-full border-white/10 hover:bg-white/5 h-10"
-                    onClick={handleSaveCurrentBriefing}
-                  >
-                    <Archive className="w-4 h-4 mr-2" />
-                    {lang === "de" ? "Briefing speichern" : "Save briefing"}
-                  </Button>
-                </div>
-
-                <BriefingDisplay briefing={result} language={lang} />
-              </div>
+              <BriefingDisplay briefing={result} language={lang} />
             ) : (
               <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
                 <div className="w-14 h-14 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
@@ -562,8 +633,8 @@ export function BriefingDashboard() {
                   </p>
                   <p className="text-sm sm:text-base text-muted-foreground leading-6">
                     {lang === "de"
-                      ? "Wähle deine Filter und erstelle anschließend ein kompaktes Nachrichten-Briefing für dein gewähltes Zeitfenster."
-                      : "Choose your filters and generate a compact news briefing for your selected time window."}
+                      ? "Wähle deine Parameter aus und erstelle anschließend dein Briefing."
+                      : "Select your parameters and then generate your briefing."}
                   </p>
                 </div>
               </div>

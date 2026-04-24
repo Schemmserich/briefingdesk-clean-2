@@ -124,7 +124,7 @@ export default function HistoryPage() {
                   No saved briefings yet
                 </p>
                 <p className="text-sm sm:text-base text-muted-foreground leading-6">
-                  Generate a briefing in the dashboard. The latest 5 are saved automatically, and you can also save your favorites manually.
+                  Generate a briefing in the dashboard. The latest 5 are saved automatically.
                 </p>
               </div>
             </div>
@@ -137,28 +137,21 @@ export default function HistoryPage() {
                   return (
                     <Card
                       key={entry.id}
-                      className={`briefing-card transition ${
-                        isSelected ? "border-primary/50" : ""
-                      }`}
+                      className={`briefing-card transition ${isSelected ? "border-primary/50" : ""}`}
                     >
                       <CardContent className="p-4 space-y-3">
-                        <div className="space-y-1">
+                        <button
+                          type="button"
+                          className="w-full text-left space-y-1"
+                          onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
+                        >
                           <div className="text-sm font-semibold text-white break-words">
                             {entry.name}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {buildArchiveLabel(entry)}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {entry.autoSaved
-                              ? entry.language === "de"
-                                ? "Automatisch gespeichert"
-                                : "Auto-saved"
-                              : entry.language === "de"
-                              ? "Manuell gespeichert"
-                              : "Manually saved"}
-                          </div>
-                        </div>
+                        </button>
 
                         <div className="grid grid-cols-4 gap-2">
                           <Button
@@ -167,11 +160,7 @@ export default function HistoryPage() {
                             className="h-9 px-2"
                             onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
                           >
-                            {isSelected ? (
-                              <FileText className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
+                            {isSelected ? <FileText className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </Button>
 
                           <Button
