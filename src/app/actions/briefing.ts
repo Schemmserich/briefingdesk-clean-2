@@ -3,6 +3,7 @@
 import { getFilteredArticles } from "@/lib/db/queries";
 import { generateCuratedBriefing } from "@/ai/flows/generate-curated-briefing";
 import { buildFallbackBriefing } from "@/lib/fallbackBriefing";
+import { dedupBriefingArticles } from "@/lib/dedupBriefingArticles";
 
 function toPlainObject<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
@@ -72,6 +73,25 @@ function localizeBriefingInput(input: any) {
   };
 }
 
+function limitPerSource(articles: any[], maxPerSource: number) {
+  const selected: any[] = [];
+  const sourceCounter = new Map<string, number>();
+
+  for (const article of articles) {
+    const sourceName = article.sourceName ?? "Unknown Source";
+    const currentCount = sourceCounter.get(sourceName) ?? 0;
+
+    if (currentCount >= maxPerSource) {
+      continue;
+    }
+
+    selected.push(article);
+    sourceCounter.set(sourceName, currentCount + 1);
+  }
+
+  return selected;
+}
+
 export async function generateCuratedBriefingAction(input: any) {
   try {
     const filteredArticles = await getFilteredArticles({
@@ -80,31 +100,24 @@ export async function generateCuratedBriefingAction(input: any) {
       regions: input.regions ?? [],
     });
 
-    const maxPerSource = 4;
-    const selected: any[] = [];
-    const sourceCounter = new Map<string, number>();
+    console.log("ACTION FILTERED ARTICLES RAW:", filteredArticles.length);
 
-    for (const article of filteredArticles) {
-      const sourceName = article.sourceName ?? "Unknown Source";
-      const currentCount = sourceCounter.get(sourceName) ?? 0;
+    const perSourceLimited = limitPerSource(filteredArticles, 4);
+    console.log("ACTION AFTER SOURCE LIMIT:", perSourceLimited.length);
 
-      if (currentCount >= maxPerSource) {
-        continue;
-      }
+    const dedupedArticles = dedupBriefingArticles(perSourceLimited);
+    console.log("ACTION AFTER DEDUPE:", dedupedArticles.length);
 
-      selected.push(article);
-      sourceCounter.set(sourceName, currentCount + 1);
-    }
+    const articlesForBriefing = dedupedArticles.slice(0, 10);
 
-    const articlesForBriefing = selected.slice(0, 10);
-
-    console.log("ACTION FILTERED ARTICLES:", articlesForBriefing.length);
     console.log(
-      "ACTION FILTERED TITLES:",
+      "ACTION FINAL TITLES:",
       articlesForBriefing.map((a) => ({
         title: a.title,
         publicationDate: a.publicationDate,
         sourceName: a.sourceName,
+        category: a.category,
+        region: a.region,
       }))
     );
 
@@ -132,7 +145,7 @@ export async function generateCuratedBriefingAction(input: any) {
       const finalResult = {
         ...toPlainObject(result),
         ...sourceMeta,
-        debugVersion: "ACTION_V2_LIVE",
+        debugVersion: "ACTION_V3_LIVE_DEDUPED",
       };
 
       console.log("ACTION RETURNING AI RESULT:", finalResult);
@@ -153,7 +166,7 @@ export async function generateCuratedBriefingAction(input: any) {
       const finalFallback = {
         ...fallbackResult,
         ...sourceMeta,
-        debugVersion: "ACTION_V2_FALLBACK",
+        debugVersion: "ACTION_V3_FALLBACK_DEDUPED",
       };
 
       console.log("ACTION RETURNING FALLBACK RESULT:", finalFallback);
