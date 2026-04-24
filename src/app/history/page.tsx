@@ -24,12 +24,6 @@ function formatArchiveDate(value: string, language: "de" | "en") {
   }).format(new Date(value));
 }
 
-function buildArchiveLabel(entry: ArchivedBriefing) {
-  const briefingType = entry.params?.briefingType ?? entry.briefing?.briefingType ?? "Briefing";
-  const time = formatArchiveDate(entry.updatedAt, entry.language);
-  return `${briefingType} · ${time}`;
-}
-
 function deriveArchiveHeadline(entry: ArchivedBriefing) {
   const briefingType = String(
     entry.briefing?.briefingType ?? entry.params?.briefingType ?? "Briefing"
@@ -52,7 +46,19 @@ function deriveArchiveHeadline(entry: ArchivedBriefing) {
     mainTitle = entry.name;
   }
 
-  return briefingType && mainTitle ? `${briefingType}: ${mainTitle}` : mainTitle || briefingType;
+  if (mainTitle.toLowerCase().startsWith(briefingType.toLowerCase() + ":")) {
+    return mainTitle;
+  }
+
+  if (briefingType && mainTitle) {
+    return `${briefingType}: ${mainTitle}`;
+  }
+
+  return mainTitle || briefingType;
+}
+
+function buildArchiveMeta(entry: ArchivedBriefing) {
+  return formatArchiveDate(entry.updatedAt, entry.language);
 }
 
 export default function HistoryPage() {
@@ -170,11 +176,11 @@ export default function HistoryPage() {
                           className="w-full text-left space-y-1"
                           onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
                         >
-                          <div className="text-sm font-semibold text-white break-words">
-                            {entry.name}
+                          <div className="text-sm sm:text-base font-semibold text-white leading-snug break-words">
+                            {deriveArchiveHeadline(entry)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {buildArchiveLabel(entry)}
+                            {buildArchiveMeta(entry)}
                           </div>
                         </button>
 
@@ -233,7 +239,7 @@ export default function HistoryPage() {
                           {deriveArchiveHeadline(selectedEntry)}
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                          {buildArchiveLabel(selectedEntry)}
+                          {buildArchiveMeta(selectedEntry)}
                         </p>
                       </div>
                     </div>
