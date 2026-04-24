@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAllTestUsers, updateTestUserStatus } from "@/lib/db/queries";
+import {
+  getAllTestUsers,
+  getAppErrors,
+  getUsageEvents,
+  updateTestUserStatus,
+} from "@/lib/db/queries";
 
 type TestUser = {
   id: string;
@@ -14,6 +19,22 @@ type TestUser = {
   created_at: string;
   approved_at?: string | null;
   last_seen_at: string;
+};
+
+type UsageEvent = {
+  id: string;
+  device_id: string;
+  event_type: string;
+  payload: Record<string, any>;
+  created_at: string;
+};
+
+type AppErrorRow = {
+  id: string;
+  device_id?: string | null;
+  error_message: string;
+  context?: Record<string, any>;
+  created_at: string;
 };
 
 function formatDate(value?: string | null) {
@@ -48,51 +69,45 @@ function getStatusBadgeClass(status: TestUser["status"]) {
 }
 
 function getStatusCardClass(status: TestUser["status"]) {
-  if (status === "approved") {
-    return "border-emerald-400/20";
-  }
-  if (status === "blocked") {
-    return "border-red-400/20";
-  }
+  if (status === "approved") return "border-emerald-400/20";
+  if (status === "blocked") return "border-red-400/20";
   return "border-amber-400/20";
 }
 
 function getLastActivityState(lastSeenAt?: string | null) {
   if (!lastSeenAt) {
-    return {
-      label: "Keine Aktivität",
-      className: "text-muted-foreground",
-    };
+    return { label: "Keine Aktivität", className: "text-muted-foreground" };
   }
 
   const lastSeen = new Date(lastSeenAt).getTime();
   if (Number.isNaN(lastSeen)) {
-    return {
-      label: "Unbekannt",
-      className: "text-muted-foreground",
-    };
+    return { label: "Unbekannt", className: "text-muted-foreground" };
   }
 
   const diffMinutes = (Date.now() - lastSeen) / 1000 / 60;
 
   if (diffMinutes <= 15) {
-    return {
-      label: "Aktiv",
-      className: "text-emerald-300",
-    };
+    return { label: "Aktiv", className: "text-emerald-300" };
   }
 
   if (diffMinutes <= 60 * 24) {
-    return {
-      label: "Kürzlich aktiv",
-      className: "text-amber-300",
-    };
+    return { label: "Kürzlich aktiv", className: "text-amber-300" };
   }
 
-  return {
-    label: "Inaktiv",
-    className: "text-red-300",
-  };
+  return { label: "Inaktiv", className: "text-red-300" };
+}
+
+function getUserNameByDeviceId(deviceId: string, users: TestUser[]) {
+  const user = users.find((u) => u.device_id === deviceId);
+  if (!user) return "Unbekannter Tester";
+  return `${user.first_name} ${user.last_name}`;
+}
+
+function getEventLabel(eventType: string) {
+  if (eventType === "briefing_generated") return "Briefing erstellt";
+  if (eventType === "app_opened") return "App geöffnet";
+  if (eventType === "tester_registered") return "Tester registriert";
+  return eventType;
 }
 
 export default function AdminPage() {
@@ -101,20 +116,30 @@ export default function AdminPage() {
   const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [users, setUsers] = useState<TestUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [usageEvents, setUsageEvents] = useState<UsageEvent[]>([]);
+  const [appErrors, setAppErrors] = useState<AppErrorRow[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [updatingDeviceId, setUpdatingDeviceId] = useState<string | null>(null);
 
-  async function loadUsers() {
+  async function loadAllData() {
     try {
-      setLoadingUsers(true);
-      const result = await getAllTestUsers();
-      setUsers(result as TestUser[]);
+      setLoadingAll(true);
+
+      const [usersResult, usageResult, errorResult] = await Promise.all([
+        getAllTestUsers(),
+        getUsageEvents(50),
+        getAppErrors(30),
+      ]);
+
+      setUsers(usersResult as TestUser[]);
+      setUsageEvents(usageResult as UsageEvent[]);
+      setAppErrors(errorResult as AppErrorRow[]);
     } catch (error) {
       console.error(error);
-      setStatusMessage("Tester konnten nicht geladen werden.");
+      setStatusMessage("Daten konnten nicht vollständig geladen werden.");
     } finally {
-      setLoadingUsers(false);
+      setLoadingAll(false);
     }
   }
 
@@ -129,7 +154,7 @@ export default function AdminPage() {
 
       if (result?.authorized) {
         setAuthorized(true);
-        await loadUsers();
+        await loadAllData();
       } else {
         setAuthorized(false);
       }
@@ -179,6 +204,8 @@ export default function AdminPage() {
 
     setAuthorized(false);
     setUsers([]);
+    setUsageEvents([]);
+    setAppErrors([]);
     setStatusMessage("");
   }
 
@@ -202,7 +229,7 @@ export default function AdminPage() {
         status: nextStatus,
       });
 
-      await loadUsers();
+      await loadAllData();
 
       setStatusMessage(
         `${user.first_name} ${user.last_name} wurde auf "${getStatusLabel(nextStatus)}" gesetzt.`
@@ -219,9 +246,22 @@ export default function AdminPage() {
     const approved = users.filter((u) => u.status === "approved").length;
     const pending = users.filter((u) => u.status === "pending").length;
     const blocked = users.filter((u) => u.status === "blocked").length;
+    const briefingCount = usageEvents.filter((e) => e.event_type === "briefing_generated").length;
 
-    return { approved, pending, blocked, total: users.length };
-  }, [users]);
+    return {
+      approved,
+      pending,
+      blocked,
+      total: users.length,
+      briefingCount,
+      errorCount: appErrors.length,
+    };
+  }, [users, usageEvents, appErrors]);
+
+  const briefingEvents = useMemo(
+    () => usageEvents.filter((e) => e.event_type === "briefing_generated"),
+    [usageEvents]
+  );
 
   if (checking) {
     return (
@@ -282,12 +322,12 @@ export default function AdminPage() {
               Admin Dashboard
             </h1>
             <p className="text-sm text-muted-foreground">
-              Tester verwalten und Freigaben eindeutig steuern.
+              Tester, Briefings und Fehler zentral überwachen.
             </p>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" className="border-white/10" onClick={loadUsers}>
+            <Button variant="outline" className="border-white/10" onClick={loadAllData}>
               Aktualisieren
             </Button>
             <Button variant="outline" className="border-white/10" onClick={handleLogout}>
@@ -296,10 +336,10 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Gesamt
+              Tester gesamt
             </div>
             <div className="mt-2 text-2xl font-bold text-white">{stats.total}</div>
           </div>
@@ -324,6 +364,20 @@ export default function AdminPage() {
             </div>
             <div className="mt-2 text-2xl font-bold text-white">{stats.blocked}</div>
           </div>
+
+          <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-blue-300">
+              Briefings
+            </div>
+            <div className="mt-2 text-2xl font-bold text-white">{stats.briefingCount}</div>
+          </div>
+
+          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-rose-300">
+              Fehler
+            </div>
+            <div className="mt-2 text-2xl font-bold text-white">{stats.errorCount}</div>
+          </div>
         </div>
 
         {statusMessage && (
@@ -332,115 +386,269 @@ export default function AdminPage() {
           </div>
         )}
 
-        {loadingUsers ? (
-          <div className="text-sm text-muted-foreground">Tester werden geladen...</div>
-        ) : users.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-            Noch keine Tester registriert.
-          </div>
+        {loadingAll ? (
+          <div className="text-sm text-muted-foreground">Daten werden geladen...</div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {users.map((user) => {
-              const isUpdating = updatingDeviceId === user.device_id;
-              const activityState = getLastActivityState(user.last_seen_at);
+          <>
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-white">Tester</h2>
+                <p className="text-sm text-muted-foreground">
+                  Freigabe und Aktivität aller registrierten Tester.
+                </p>
+              </div>
 
-              return (
-                <Card
-                  key={user.id}
-                  className={`briefing-card ${getStatusCardClass(user.status)}`}
-                >
-                  <CardContent className="p-5 space-y-5">
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="space-y-2 min-w-0">
-                        <div className="text-xl font-semibold text-white">
-                          {user.first_name} {user.last_name}
-                        </div>
-                        <div className="text-sm text-muted-foreground break-all">
-                          Device ID: {user.device_id}
-                        </div>
-                      </div>
+              <div className="grid grid-cols-1 gap-4">
+                {users.map((user) => {
+                  const isUpdating = updatingDeviceId === user.device_id;
+                  const activityState = getLastActivityState(user.last_seen_at);
 
-                      <div
-                        className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusBadgeClass(
-                          user.status
-                        )}`}
-                      >
-                        {getStatusLabel(user.status)}
-                      </div>
-                    </div>
+                  return (
+                    <Card
+                      key={user.id}
+                      className={`briefing-card ${getStatusCardClass(user.status)}`}
+                    >
+                      <CardContent className="p-5 space-y-5">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="space-y-2 min-w-0">
+                            <div className="text-xl font-semibold text-white">
+                              {user.first_name} {user.last_name}
+                            </div>
+                            <div className="text-sm text-muted-foreground break-all">
+                              Device ID: {user.device_id}
+                            </div>
+                          </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                          Registriert
+                          <div
+                            className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusBadgeClass(
+                              user.status
+                            )}`}
+                          >
+                            {getStatusLabel(user.status)}
+                          </div>
                         </div>
-                        <div className="mt-2 text-sm font-medium text-white">
-                          {formatDate(user.created_at)}
-                        </div>
-                      </div>
 
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                          Zuletzt aktiv
-                        </div>
-                        <div className="mt-2 text-sm font-medium text-white">
-                          {formatDate(user.last_seen_at)}
-                        </div>
-                      </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Registriert
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                              {formatDate(user.created_at)}
+                            </div>
+                          </div>
 
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                          Aktivität
-                        </div>
-                        <div className={`mt-2 text-sm font-medium ${activityState.className}`}>
-                          {activityState.label}
-                        </div>
-                      </div>
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Zuletzt aktiv
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                              {formatDate(user.last_seen_at)}
+                            </div>
+                          </div>
 
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                          Freigegeben am
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Aktivität
+                            </div>
+                            <div className={`mt-2 text-sm font-medium ${activityState.className}`}>
+                              {activityState.label}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Freigegeben am
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                              {formatDate(user.approved_at)}
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-2 text-sm font-medium text-white">
-                          {formatDate(user.approved_at)}
+
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            className="h-10"
+                            disabled={isUpdating || user.status === "approved"}
+                            onClick={() => handleStatusChange(user, "approved")}
+                          >
+                            {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            className="h-10 border-white/10"
+                            disabled={isUpdating || user.status === "pending"}
+                            onClick={() => handleStatusChange(user, "pending")}
+                          >
+                            Freigabe ausstehend
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            className="h-10 border-white/10"
+                            disabled={isUpdating || user.status === "blocked"}
+                            onClick={() => handleStatusChange(user, "blocked")}
+                          >
+                            Sperren
+                          </Button>
                         </div>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
 
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        className="h-10"
-                        disabled={isUpdating || user.status === "approved"}
-                        onClick={() => handleStatusChange(user, "approved")}
-                      >
-                        {isUpdating && updatingDeviceId === user.device_id
-                          ? "Wird aktualisiert..."
-                          : "Freigeben"}
-                      </Button>
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-white">Letzte Briefings</h2>
+                <p className="text-sm text-muted-foreground">
+                  Wer wann welches Briefing generiert hat.
+                </p>
+              </div>
 
-                      <Button
-                        variant="outline"
-                        className="h-10 border-white/10"
-                        disabled={isUpdating || user.status === "pending"}
-                        onClick={() => handleStatusChange(user, "pending")}
-                      >
-                        Freigabe ausstehend
-                      </Button>
+              {briefingEvents.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+                  Noch keine Briefing-Generierungen protokolliert.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {briefingEvents.map((event) => (
+                    <Card key={event.id} className="briefing-card">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="space-y-1">
+                            <div className="text-base font-semibold text-white">
+                              {getUserNameByDeviceId(event.device_id, users)}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {getEventLabel(event.event_type)}
+                            </div>
+                          </div>
 
-                      <Button
-                        variant="outline"
-                        className="h-10 border-white/10"
-                        disabled={isUpdating || user.status === "blocked"}
-                        onClick={() => handleStatusChange(user, "blocked")}
-                      >
-                        Sperren
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatDate(event.created_at)}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm">
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Ausgabeformat
+                            </div>
+                            <div className="mt-2 text-white">
+                              {event.payload?.briefingType ?? "—"}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Zeitfenster
+                            </div>
+                            <div className="mt-2 text-white">
+                              {event.payload?.timeframe ?? "—"}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Sprache
+                            </div>
+                            <div className="mt-2 text-white">
+                              {event.payload?.language ?? "—"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Kategorien
+                            </div>
+                            <div className="mt-2 text-white">
+                              {Array.isArray(event.payload?.categories)
+                                ? event.payload.categories.join(", ")
+                                : "—"}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Regionen
+                            </div>
+                            <div className="mt-2 text-white">
+                              {Array.isArray(event.payload?.regions)
+                                ? event.payload.regions.join(", ")
+                                : "—"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+                          <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                            Überschrift
+                          </div>
+                          <div className="mt-2 text-white">
+                            {event.payload?.headline || "—"}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-white">Letzte Fehler</h2>
+                <p className="text-sm text-muted-foreground">
+                  Fehlermeldungen und technische Probleme der Tester.
+                </p>
+              </div>
+
+              {appErrors.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+                  Keine Fehler protokolliert.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {appErrors.map((errorRow) => (
+                    <Card key={errorRow.id} className="briefing-card border-red-400/15">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="space-y-1">
+                            <div className="text-base font-semibold text-white">
+                              {errorRow.device_id
+                                ? getUserNameByDeviceId(errorRow.device_id, users)
+                                : "Unbekannter Tester"}
+                            </div>
+                            <div className="text-sm text-red-300">
+                              {errorRow.error_message}
+                            </div>
+                          </div>
+
+                          <div className="text-sm text-muted-foreground">
+                            {formatDate(errorRow.created_at)}
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+                          <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                            Kontext
+                          </div>
+                          <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
+                            {JSON.stringify(errorRow.context ?? {}, null, 2)}
+                          </pre>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
         )}
       </div>
     </main>

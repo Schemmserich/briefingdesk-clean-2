@@ -196,3 +196,24 @@ export async function updateTestUserStatus(input: {
   if (error) throw error;
   return data;
 }
+export async function getUsageEvents(limit = 50) {
+  const { data, error } = await supabase
+    .from("usage_events")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getAppErrors(limit = 30) {
+  const { data, error } = await supabase
+    .from("app_errors")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}

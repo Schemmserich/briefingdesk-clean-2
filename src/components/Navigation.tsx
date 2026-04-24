@@ -1,25 +1,57 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, History } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, History, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Archive", href: "/history", icon: History },
-];
+type NavItem = {
+  label: string;
+  href: string;
+  icon: any;
+};
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkAdminSession() {
+      try {
+        const response = await fetch("/api/admin-session", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const result = await response.json();
+        setIsAdmin(!!result?.authorized);
+      } catch {
+        setIsAdmin(false);
+      }
+    }
+
+    checkAdminSession();
+  }, [pathname]);
+
+  const navItems: NavItem[] = [
+    { label: "Dashboard", href: "/", icon: LayoutDashboard },
+    { label: "Archiv", href: "/history", icon: History },
+  ];
+
+  if (isAdmin) {
+    navItems.push({ label: "Admin", href: "/admin", icon: Shield });
+  }
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70 overflow-x-hidden">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
         <div className="flex h-14 items-center justify-between gap-3 min-w-0">
-          <Link
-            href="/"
-            className="min-w-0 shrink flex items-center gap-2 overflow-hidden"
+          <button
+            type="button"
+            onDoubleClick={() => router.push("/admin")}
+            className="min-w-0 shrink flex items-center gap-2 overflow-hidden text-left"
+            title="Doppelklick für Admin"
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary font-bold">
               N
@@ -27,7 +59,7 @@ export function Navigation() {
             <span className="truncate text-base sm:text-xl font-headline font-bold text-white tracking-tight">
               News Briefing
             </span>
-          </Link>
+          </button>
 
           <nav className="min-w-0 max-w-full overflow-hidden">
             <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">
@@ -47,7 +79,7 @@ export function Navigation() {
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    <span className="hidden sm:inline">{item.label}</span>
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
