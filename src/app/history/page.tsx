@@ -30,6 +30,31 @@ function buildArchiveLabel(entry: ArchivedBriefing) {
   return `${briefingType} · ${time}`;
 }
 
+function deriveArchiveHeadline(entry: ArchivedBriefing) {
+  const briefingType = String(
+    entry.briefing?.briefingType ?? entry.params?.briefingType ?? "Briefing"
+  ).trim();
+
+  let mainTitle = String(entry.briefing?.mainTitle ?? "").trim();
+
+  if (!mainTitle) {
+    const overview = String(entry.briefing?.overviewParagraph ?? "").trim();
+    if (overview) {
+      const firstSentence = overview.split(/(?<=[.!?])\s+/)[0]?.trim() || overview;
+      mainTitle =
+        firstSentence.length > 120
+          ? `${firstSentence.slice(0, 117).trim()}...`
+          : firstSentence;
+    }
+  }
+
+  if (!mainTitle) {
+    mainTitle = entry.name;
+  }
+
+  return briefingType && mainTitle ? `${briefingType}: ${mainTitle}` : mainTitle || briefingType;
+}
+
 export default function HistoryPage() {
   const [entries, setEntries] = useState<ArchivedBriefing[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -196,13 +221,29 @@ export default function HistoryPage() {
                 })}
               </div>
 
-              <div className="lg:col-span-8 min-w-0">
+              <div className="lg:col-span-8 min-w-0 space-y-4">
                 {selectedEntry ? (
-                  <BriefingDisplay
-                    briefing={selectedEntry.briefing}
-                    language={selectedEntry.language}
-                    fallbackTitle={selectedEntry.name}
-                  />
+                  <>
+                    <div className="briefing-card p-4 sm:p-6">
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-[0.2em] font-bold text-muted-foreground">
+                          {selectedEntry.language === "de" ? "Archivdokument" : "Archive document"}
+                        </div>
+                        <h2 className="text-xl sm:text-2xl lg:text-3xl font-headline font-bold text-white leading-tight break-words">
+                          {deriveArchiveHeadline(selectedEntry)}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {buildArchiveLabel(selectedEntry)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <BriefingDisplay
+                      briefing={selectedEntry.briefing}
+                      language={selectedEntry.language}
+                      fallbackTitle={selectedEntry.name}
+                    />
+                  </>
                 ) : (
                   <div className="min-h-[420px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
                     <div className="w-14 h-14 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
