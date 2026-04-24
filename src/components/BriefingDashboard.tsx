@@ -12,6 +12,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { BriefingDisplay } from "./BriefingDisplay";
 import { generateCuratedBriefingAction } from "@/app/actions/briefing";
 import { saveAutoBriefing } from "@/lib/briefingArchive";
+import { getOrCreateDeviceId } from "@/lib/testerDevice";
+import { logAppError, logUsageEvent } from "@/lib/db/queries";
 import {
   Loader2,
   Zap,
@@ -469,6 +471,8 @@ export function BriefingDashboard() {
     setLoading(true);
     setResult(null);
 
+    const deviceId = getOrCreateDeviceId();
+
     try {
       const payload: BriefingRequest = {
         language: params.language,
@@ -483,6 +487,15 @@ export function BriefingDashboard() {
       const response = await generateCuratedBriefingAction(payload);
 
       if (!response?.success) {
+        await logAppError({
+          deviceId,
+          errorMessage: response?.error || "Briefing generation failed",
+          context: {
+            location: "BriefingDashboard.handleGenerate",
+            params: payload,
+          },
+        });
+
         toast({
           variant: "destructive",
           title: lang === "de" ? "Fehler" : "Error",
@@ -502,6 +515,21 @@ export function BriefingDashboard() {
         language: lang,
         params: payload,
         briefing: briefingData,
+      });
+
+      await logUsageEvent({
+        deviceId,
+        eventType: "briefing_generated",
+        payload: {
+          language: payload.language,
+          timeframe: payload.timeframe,
+          categories: payload.categories,
+          regions: payload.regions,
+          briefingType: payload.briefingType,
+          includeMarketInsights: payload.includeMarketInsights,
+          includeChangeAnalysis: payload.includeChangeAnalysis,
+          headline: briefingData.mainTitle ?? "",
+        },
       });
 
       toast({
@@ -541,6 +569,23 @@ export function BriefingDashboard() {
       } else {
         errorDesc = error.message || errorDesc;
       }
+
+      await logAppError({
+        deviceId,
+        errorMessage: error?.message || "Unexpected briefing generation error",
+        context: {
+          location: "BriefingDashboard.handleGenerate.catch",
+          params: {
+            language: params.language,
+            timeframe: params.timeframe,
+            categories: params.categories,
+            regions: params.regions,
+            briefingType: params.briefingType,
+            includeMarketInsights: params.includeMarketInsights,
+            includeChangeAnalysis: params.includeChangeAnalysis,
+          },
+        },
+      });
 
       toast({
         variant: "destructive",
