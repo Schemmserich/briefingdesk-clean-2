@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Navigation } from "@/components/Navigation";
 import {
+  deleteTestUserCompletely,
   getAllTestUsers,
   getAppErrors,
   getUsageEvents,
@@ -198,7 +199,9 @@ export default function AdminPage() {
   const [appErrors, setAppErrors] = useState<AppErrorRow[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [updatingDeviceId, setUpdatingDeviceId] = useState<string | null>(null);
+const [updatingDeviceId, setUpdatingDeviceId] = useState<string | null>(null);
+const [deleteConfirmDeviceId, setDeleteConfirmDeviceId] = useState<string | null>(null);
+const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
 
   async function loadAllData() {
     try {
@@ -327,6 +330,37 @@ export default function AdminPage() {
       setUpdatingDeviceId(null);
     }
   }
+
+function startDeleteUser(deviceId: string) {
+  setDeleteConfirmDeviceId(deviceId);
+  setStatusMessage("");
+}
+
+function cancelDeleteUser() {
+  setDeleteConfirmDeviceId(null);
+}
+
+async function confirmDeleteUser(user: TestUser) {
+  try {
+    setDeletingDeviceId(user.device_id);
+    setStatusMessage("");
+
+    await deleteTestUserCompletely(user.device_id);
+    setDeleteConfirmDeviceId(null);
+    await loadAllData();
+
+    setStatusMessage(
+      `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
+    );
+  } catch (error) {
+    console.error(error);
+    setStatusMessage("Der Nutzer konnte nicht gelöscht werden.");
+  } finally {
+    setDeletingDeviceId(null);
+  }
+}
+
+
 
   const stats = useMemo(() => {
     const approved = users.filter((u) => u.status === "approved").length;
@@ -568,33 +602,75 @@ export default function AdminPage() {
                             </div>
                           </div>
 
-                          <div className="flex gap-2 flex-wrap">
-                            <Button
-                              className="h-10"
-                              disabled={isUpdating || user.status === "approved"}
-                              onClick={() => handleStatusChange(user, "approved")}
-                            >
-                              {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
-                            </Button>
+                          <div className="space-y-3">
+  <div className="flex gap-2 flex-wrap">
+    <Button
+      className="h-10"
+      disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "approved"}
+      onClick={() => handleStatusChange(user, "approved")}
+    >
+      {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
+    </Button>
 
-                            <Button
-                              variant="outline"
-                              className="h-10 border-white/10"
-                              disabled={isUpdating || user.status === "pending"}
-                              onClick={() => handleStatusChange(user, "pending")}
-                            >
-                              Freigabe ausstehend
-                            </Button>
+    <Button
+      variant="outline"
+      className="h-10 border-white/10"
+      disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "pending"}
+      onClick={() => handleStatusChange(user, "pending")}
+    >
+      Freigabe ausstehend
+    </Button>
 
-                            <Button
-                              variant="outline"
-                              className="h-10 border-white/10"
-                              disabled={isUpdating || user.status === "blocked"}
-                              onClick={() => handleStatusChange(user, "blocked")}
-                            >
-                              Sperren
-                            </Button>
-                          </div>
+    <Button
+      variant="outline"
+      className="h-10 border-white/10"
+      disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "blocked"}
+      onClick={() => handleStatusChange(user, "blocked")}
+    >
+      Sperren
+    </Button>
+
+    <Button
+      variant="outline"
+      className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
+      disabled={isUpdating || deletingDeviceId === user.device_id}
+      onClick={() => startDeleteUser(user.device_id)}
+    >
+      Löschen
+    </Button>
+  </div>
+
+  {deleteConfirmDeviceId === user.device_id && (
+    <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 space-y-3">
+      <div className="text-sm text-white font-medium">
+        Soll {user.first_name} {user.last_name} wirklich vollständig gelöscht werden?
+      </div>
+      <div className="text-xs text-muted-foreground leading-5">
+        Dabei werden auch die zugehörigen Briefing-Logs und Fehlerprotokolle dieses Geräts entfernt.
+        Der Nutzer kann sich später erneut registrieren.
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          className="h-10 bg-red-600 hover:bg-red-700 text-white"
+          disabled={deletingDeviceId === user.device_id}
+          onClick={() => confirmDeleteUser(user)}
+        >
+          {deletingDeviceId === user.device_id ? "Wird gelöscht..." : "Endgültig löschen"}
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-10 border-white/10"
+          disabled={deletingDeviceId === user.device_id}
+          onClick={cancelDeleteUser}
+        >
+          Abbrechen
+        </Button>
+      </div>
+    </div>
+  )}
+</div>
                         </CardContent>
                       </Card>
                     );

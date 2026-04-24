@@ -243,3 +243,26 @@ export async function getAppErrors(limit = 30) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function deleteTestUserCompletely(deviceId: string) {
+  const { error: usageError } = await supabase
+    .from("usage_events")
+    .delete()
+    .eq("device_id", deviceId);
+
+  if (usageError) throw usageError;
+
+  const { error: appErrorsError } = await supabase
+    .from("app_errors")
+    .delete()
+    .eq("device_id", deviceId);
+
+  if (appErrorsError) throw appErrorsError;
+
+  const { error: userError } = await supabase
+    .from("test_users")
+    .delete()
+    .eq("device_id", deviceId);
+
+  if (userError) throw userError;
+}
