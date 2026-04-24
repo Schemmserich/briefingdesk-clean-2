@@ -104,12 +104,33 @@ export async function registerTestUser(input: {
   firstName: string;
   lastName: string;
 }) {
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+
+  const existingUser = await getTestUserByDeviceId(input.deviceId);
+
+  if (existingUser) {
+    const { data, error } = await supabase
+      .from("test_users")
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        last_seen_at: new Date().toISOString(),
+      })
+      .eq("device_id", input.deviceId)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   const { data, error } = await supabase
     .from("test_users")
     .insert({
       device_id: input.deviceId,
-      first_name: input.firstName.trim(),
-      last_name: input.lastName.trim(),
+      first_name: firstName,
+      last_name: lastName,
       status: "pending",
       last_seen_at: new Date().toISOString(),
     })
@@ -186,6 +207,10 @@ export async function updateTestUserStatus(input: {
     updatePayload.approved_at = new Date().toISOString();
   }
 
+  if (input.status !== "approved") {
+    updatePayload.approved_at = null;
+  }
+
   const { data, error } = await supabase
     .from("test_users")
     .update(updatePayload)
@@ -196,6 +221,7 @@ export async function updateTestUserStatus(input: {
   if (error) throw error;
   return data;
 }
+
 export async function getUsageEvents(limit = 50) {
   const { data, error } = await supabase
     .from("usage_events")

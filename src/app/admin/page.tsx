@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Navigation } from "@/components/Navigation";
 import {
   getAllTestUsers,
   getAppErrors,
@@ -153,15 +155,15 @@ export default function AdminPage() {
       const result = await response.json();
 
       if (result?.authorized) {
-  setAuthorized(true);
-  await loadAllData();
-} else {
-  setAuthorized(false);
+        setAuthorized(true);
+        await loadAllData();
+      } else {
+        setAuthorized(false);
 
-  if (result?.isEligibleAdmin === false) {
-    setStatusMessage("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
-  }
-}
+        if (result?.isEligibleAdmin === false) {
+          setStatusMessage("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
+        }
+      }
     } catch (error) {
       console.error(error);
       setAuthorized(false);
@@ -189,14 +191,14 @@ export default function AdminPage() {
 
       const result = await response.json();
 
-     if (!response.ok || !result?.success) {
-  if (response.status === 403) {
-    setLoginError("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
-  } else {
-    setLoginError("Admin-Passcode ist nicht korrekt.");
-  }
-  return;
-}
+      if (!response.ok || !result?.success) {
+        if (response.status === 403) {
+          setLoginError("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
+        } else {
+          setLoginError("Admin-Passcode ist nicht korrekt.");
+        }
+        return;
+      }
 
       setPasscode("");
       await checkAdminSession();
@@ -273,392 +275,409 @@ export default function AdminPage() {
 
   if (checking) {
     return (
-      <main className="mx-auto w-full max-w-7xl px-3 py-10 sm:px-4 lg:px-6">
-        <div className="min-h-[60vh] flex items-center justify-center text-white">
-          Adminbereich wird geladen...
-        </div>
-      </main>
+      <>
+        <Navigation />
+        <main className="mx-auto w-full max-w-7xl px-3 py-10 sm:px-4 lg:px-6">
+          <div className="min-h-[60vh] flex items-center justify-center text-white">
+            Adminbereich wird geladen...
+          </div>
+        </main>
+      </>
     );
   }
 
   if (!authorized) {
     return (
-      <main className="mx-auto w-full max-w-7xl px-3 py-10 sm:px-4 lg:px-6">
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 sm:p-8 space-y-5">
-            <div className="space-y-2 text-center">
-              <h1 className="text-2xl font-bold text-white">Admin Login</h1>
-              <p className="text-sm text-muted-foreground leading-6">
-                Bitte Admin-Passcode eingeben.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm text-white">Passcode</label>
-                <input
-                  type="password"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-white outline-none focus:border-primary"
-                  placeholder="Passcode"
-                />
+      <>
+        <Navigation />
+        <main className="mx-auto w-full max-w-7xl px-3 py-10 sm:px-4 lg:px-6">
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 sm:p-8 space-y-5">
+              <div className="space-y-2 text-center">
+                <h1 className="text-2xl font-bold text-white">Admin Login</h1>
+                <p className="text-sm text-muted-foreground leading-6">
+                  Bitte Admin-Passcode eingeben.
+                </p>
               </div>
 
-              {loginError && (
-                <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                  {loginError}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm text-white">Passcode</label>
+                  <input
+                    type="password"
+                    value={passcode}
+                    onChange={(e) => setPasscode(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-white outline-none focus:border-primary"
+                    placeholder="Passcode"
+                  />
                 </div>
-              )}
 
-              <Button className="w-full h-12" onClick={handleLogin}>
-                Einloggen
-              </Button>
+                {loginError && (
+                  <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {loginError}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button className="flex-1 h-12" onClick={handleLogin}>
+                    Einloggen
+                  </Button>
+                  <Button asChild variant="outline" className="h-12 border-white/10">
+                    <Link href="/">Zur App</Link>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </>
     );
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 lg:px-6 lg:py-8">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">
-              Admin Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Tester, Briefings und Fehler zentral überwachen.
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" className="border-white/10" onClick={loadAllData}>
-              Aktualisieren
-            </Button>
-            <Button variant="outline" className="border-white/10" onClick={handleLogout}>
-              Logout
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Tester gesamt
+    <>
+      <Navigation />
+      <main className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 lg:px-6 lg:py-8">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                Admin Dashboard
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Tester, Briefings und Fehler zentral überwachen.
+              </p>
             </div>
-            <div className="mt-2 text-2xl font-bold text-white">{stats.total}</div>
-          </div>
 
-          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-emerald-300">
-              Freigegeben
+            <div className="flex gap-2">
+              <Button asChild variant="outline" className="border-white/10">
+                <Link href="/">Zur App</Link>
+              </Button>
+              <Button variant="outline" className="border-white/10" onClick={loadAllData}>
+                Aktualisieren
+              </Button>
+              <Button variant="outline" className="border-white/10" onClick={handleLogout}>
+                Logout
+              </Button>
             </div>
-            <div className="mt-2 text-2xl font-bold text-white">{stats.approved}</div>
           </div>
 
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-amber-300">
-              Ausstehend
-            </div>
-            <div className="mt-2 text-2xl font-bold text-white">{stats.pending}</div>
-          </div>
-
-          <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-red-300">
-              Gesperrt
-            </div>
-            <div className="mt-2 text-2xl font-bold text-white">{stats.blocked}</div>
-          </div>
-
-          <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-blue-300">
-              Briefings
-            </div>
-            <div className="mt-2 text-2xl font-bold text-white">{stats.briefingCount}</div>
-          </div>
-
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-rose-300">
-              Fehler
-            </div>
-            <div className="mt-2 text-2xl font-bold text-white">{stats.errorCount}</div>
-          </div>
-        </div>
-
-        {statusMessage && (
-          <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-white">
-            {statusMessage}
-          </div>
-        )}
-
-        {loadingAll ? (
-          <div className="text-sm text-muted-foreground">Daten werden geladen...</div>
-        ) : (
-          <>
-            <section className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-white">Tester</h2>
-                <p className="text-sm text-muted-foreground">
-                  Freigabe und Aktivität aller registrierten Tester.
-                </p>
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Tester gesamt
               </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.total}</div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                {users.map((user) => {
-                  const isUpdating = updatingDeviceId === user.device_id;
-                  const activityState = getLastActivityState(user.last_seen_at);
-
-                  return (
-                    <Card
-                      key={user.id}
-                      className={`briefing-card ${getStatusCardClass(user.status)}`}
-                    >
-                      <CardContent className="p-5 space-y-5">
-                        <div className="flex items-start justify-between gap-4 flex-wrap">
-                          <div className="space-y-2 min-w-0">
-                            <div className="text-xl font-semibold text-white">
-                              {user.first_name} {user.last_name}
-                            </div>
-                            <div className="text-sm text-muted-foreground break-all">
-                              Device ID: {user.device_id}
-                            </div>
-                          </div>
-
-                          <div
-                            className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusBadgeClass(
-                              user.status
-                            )}`}
-                          >
-                            {getStatusLabel(user.status)}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Registriert
-                            </div>
-                            <div className="mt-2 text-sm font-medium text-white">
-                              {formatDate(user.created_at)}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Zuletzt aktiv
-                            </div>
-                            <div className="mt-2 text-sm font-medium text-white">
-                              {formatDate(user.last_seen_at)}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Aktivität
-                            </div>
-                            <div className={`mt-2 text-sm font-medium ${activityState.className}`}>
-                              {activityState.label}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Freigegeben am
-                            </div>
-                            <div className="mt-2 text-sm font-medium text-white">
-                              {formatDate(user.approved_at)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 flex-wrap">
-                          <Button
-                            className="h-10"
-                            disabled={isUpdating || user.status === "approved"}
-                            onClick={() => handleStatusChange(user, "approved")}
-                          >
-                            {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            className="h-10 border-white/10"
-                            disabled={isUpdating || user.status === "pending"}
-                            onClick={() => handleStatusChange(user, "pending")}
-                          >
-                            Freigabe ausstehend
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            className="h-10 border-white/10"
-                            disabled={isUpdating || user.status === "blocked"}
-                            onClick={() => handleStatusChange(user, "blocked")}
-                          >
-                            Sperren
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-emerald-300">
+                Freigegeben
               </div>
-            </section>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.approved}</div>
+            </div>
 
-            <section className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-white">Letzte Briefings</h2>
-                <p className="text-sm text-muted-foreground">
-                  Wer wann welches Briefing generiert hat.
-                </p>
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-amber-300">
+                Ausstehend
               </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.pending}</div>
+            </div>
 
-              {briefingEvents.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-                  Noch keine Briefing-Generierungen protokolliert.
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-red-300">
+                Gesperrt
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.blocked}</div>
+            </div>
+
+            <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-blue-300">
+                Briefings
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.briefingCount}</div>
+            </div>
+
+            <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-rose-300">
+                Fehler
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.errorCount}</div>
+            </div>
+          </div>
+
+          {statusMessage && (
+            <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-white">
+              {statusMessage}
+            </div>
+          )}
+
+          {loadingAll ? (
+            <div className="text-sm text-muted-foreground">Daten werden geladen...</div>
+          ) : (
+            <>
+              <section className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-white">Tester</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Freigabe und Aktivität aller registrierten Tester.
+                  </p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {briefingEvents.map((event) => (
-                    <Card key={event.id} className="briefing-card">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-4 flex-wrap">
-                          <div className="space-y-1">
-                            <div className="text-base font-semibold text-white">
-                              {getUserNameByDeviceId(event.device_id, users)}
+
+                <div className="grid grid-cols-1 gap-4">
+                  {users.map((user) => {
+                    const isUpdating = updatingDeviceId === user.device_id;
+                    const activityState = getLastActivityState(user.last_seen_at);
+
+                    return (
+                      <Card
+                        key={user.id}
+                        className={`briefing-card ${getStatusCardClass(user.status)}`}
+                      >
+                        <CardContent className="p-5 space-y-5">
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="space-y-2 min-w-0">
+                              <div className="text-xl font-semibold text-white">
+                                {user.first_name} {user.last_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground break-all">
+                                Device ID: {user.device_id}
+                              </div>
                             </div>
+
+                            <div
+                              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusBadgeClass(
+                                user.status
+                              )}`}
+                            >
+                              {getStatusLabel(user.status)}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Registriert
+                              </div>
+                              <div className="mt-2 text-sm font-medium text-white">
+                                {formatDate(user.created_at)}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Zuletzt aktiv
+                              </div>
+                              <div className="mt-2 text-sm font-medium text-white">
+                                {formatDate(user.last_seen_at)}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Aktivität
+                              </div>
+                              <div className={`mt-2 text-sm font-medium ${activityState.className}`}>
+                                {activityState.label}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Freigegeben am
+                              </div>
+                              <div className="mt-2 text-sm font-medium text-white">
+                                {formatDate(user.approved_at)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              className="h-10"
+                              disabled={isUpdating || user.status === "approved"}
+                              onClick={() => handleStatusChange(user, "approved")}
+                            >
+                              {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              className="h-10 border-white/10"
+                              disabled={isUpdating || user.status === "pending"}
+                              onClick={() => handleStatusChange(user, "pending")}
+                            >
+                              Freigabe ausstehend
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              className="h-10 border-white/10"
+                              disabled={isUpdating || user.status === "blocked"}
+                              onClick={() => handleStatusChange(user, "blocked")}
+                            >
+                              Sperren
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-white">Letzte Briefings</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Wer wann welches Briefing generiert hat.
+                  </p>
+                </div>
+
+                {briefingEvents.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+                    Noch keine Briefing-Generierungen protokolliert.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {briefingEvents.map((event) => (
+                      <Card key={event.id} className="briefing-card">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="space-y-1">
+                              <div className="text-base font-semibold text-white">
+                                {getUserNameByDeviceId(event.device_id, users)}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {getEventLabel(event.event_type)}
+                              </div>
+                            </div>
+
                             <div className="text-sm text-muted-foreground">
-                              {getEventLabel(event.event_type)}
+                              {formatDate(event.created_at)}
                             </div>
                           </div>
 
-                          <div className="text-sm text-muted-foreground">
-                            {formatDate(event.created_at)}
-                          </div>
-                        </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm">
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Ausgabeformat
+                              </div>
+                              <div className="mt-2 text-white">
+                                {event.payload?.briefingType ?? "—"}
+                              </div>
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm">
-                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Zeitfenster
+                              </div>
+                              <div className="mt-2 text-white">
+                                {event.payload?.timeframe ?? "—"}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Sprache
+                              </div>
+                              <div className="mt-2 text-white">
+                                {event.payload?.language ?? "—"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Kategorien
+                              </div>
+                              <div className="mt-2 text-white">
+                                {Array.isArray(event.payload?.categories)
+                                  ? event.payload.categories.join(", ")
+                                  : "—"}
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-white/[0.03] p-3">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Regionen
+                              </div>
+                              <div className="mt-2 text-white">
+                                {Array.isArray(event.payload?.regions)
+                                  ? event.payload.regions.join(", ")
+                                  : "—"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
                             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Ausgabeformat
+                              Überschrift
                             </div>
                             <div className="mt-2 text-white">
-                              {event.payload?.briefingType ?? "—"}
+                              {event.payload?.headline || "—"}
                             </div>
                           </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
 
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Zeitfenster
-                            </div>
-                            <div className="mt-2 text-white">
-                              {event.payload?.timeframe ?? "—"}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Sprache
-                            </div>
-                            <div className="mt-2 text-white">
-                              {event.payload?.language ?? "—"}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Kategorien
-                            </div>
-                            <div className="mt-2 text-white">
-                              {Array.isArray(event.payload?.categories)
-                                ? event.payload.categories.join(", ")
-                                : "—"}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Regionen
-                            </div>
-                            <div className="mt-2 text-white">
-                              {Array.isArray(event.payload?.regions)
-                                ? event.payload.regions.join(", ")
-                                : "—"}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-                          <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                            Überschrift
-                          </div>
-                          <div className="mt-2 text-white">
-                            {event.payload?.headline || "—"}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+              <section className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-white">Letzte Fehler</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Fehlermeldungen und technische Probleme der Tester.
+                  </p>
                 </div>
-              )}
-            </section>
 
-            <section className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-white">Letzte Fehler</h2>
-                <p className="text-sm text-muted-foreground">
-                  Fehlermeldungen und technische Probleme der Tester.
-                </p>
-              </div>
-
-              {appErrors.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-                  Keine Fehler protokolliert.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {appErrors.map((errorRow) => (
-                    <Card key={errorRow.id} className="briefing-card border-red-400/15">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-4 flex-wrap">
-                          <div className="space-y-1">
-                            <div className="text-base font-semibold text-white">
-                              {errorRow.device_id
-                                ? getUserNameByDeviceId(errorRow.device_id, users)
-                                : "Unbekannter Tester"}
+                {appErrors.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+                    Keine Fehler protokolliert.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {appErrors.map((errorRow) => (
+                      <Card key={errorRow.id} className="briefing-card border-red-400/15">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="space-y-1">
+                              <div className="text-base font-semibold text-white">
+                                {errorRow.device_id
+                                  ? getUserNameByDeviceId(errorRow.device_id, users)
+                                  : "Unbekannter Tester"}
+                              </div>
+                              <div className="text-sm text-red-300">
+                                {errorRow.error_message}
+                              </div>
                             </div>
-                            <div className="text-sm text-red-300">
-                              {errorRow.error_message}
+
+                            <div className="text-sm text-muted-foreground">
+                              {formatDate(errorRow.created_at)}
                             </div>
                           </div>
 
-                          <div className="text-sm text-muted-foreground">
-                            {formatDate(errorRow.created_at)}
+                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Kontext
+                            </div>
+                            <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
+                              {JSON.stringify(errorRow.context ?? {}, null, 2)}
+                            </pre>
                           </div>
-                        </div>
-
-                        <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-                          <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                            Kontext
-                          </div>
-                          <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
-                            {JSON.stringify(errorRow.context ?? {}, null, 2)}
-                          </pre>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-      </div>
-    </main>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      </main>
+    </>
   );
 }
