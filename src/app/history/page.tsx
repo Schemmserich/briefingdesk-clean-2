@@ -9,9 +9,10 @@ import {
   listArchivedBriefings,
   renameArchivedBriefing,
 } from "@/lib/briefingArchive";
+import { exportArchivedBriefingToPdf } from "@/lib/exportBriefingPdf";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Archive, Pencil, Trash2, Eye, FileText } from "lucide-react";
+import { Archive, Pencil, Trash2, Eye, FileText, Download } from "lucide-react";
 
 function formatArchiveDate(value: string, language: "de" | "en") {
   return new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-US", {
@@ -95,6 +96,10 @@ export default function HistoryPage() {
     }
   };
 
+  const handlePdfExport = (entry: ArchivedBriefing) => {
+    exportArchivedBriefingToPdf(entry);
+  };
+
   return (
     <>
       <Navigation />
@@ -105,7 +110,7 @@ export default function HistoryPage() {
               Archive
             </h1>
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground max-w-3xl leading-6 sm:leading-7">
-              Open, rename, and manage saved briefings. The latest 5 generated briefings are saved automatically.
+              Open, rename, export, and manage saved briefings. The latest 5 generated briefings are saved automatically.
             </p>
           </div>
 
@@ -155,7 +160,7 @@ export default function HistoryPage() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                           <Button
                             type="button"
                             variant={isSelected ? "default" : "outline"}
@@ -167,6 +172,15 @@ export default function HistoryPage() {
                             ) : (
                               <Eye className="w-4 h-4" />
                             )}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-white/10 hover:bg-white/5 h-9 px-2"
+                            onClick={() => handlePdfExport(entry)}
+                          >
+                            <Download className="w-4 h-4" />
                           </Button>
 
                           <Button
