@@ -250,6 +250,40 @@ export async function deleteTestUserCompletely(deviceId: string) {
     .delete()
     .eq("device_id", deviceId);
 
+  if (usageError) {
+    throw new Error(`usage_events delete failed: ${usageError.message}`);
+  }
+
+  const { error: appErrorsError } = await supabase
+    .from("app_errors")
+    .delete()
+    .eq("device_id", deviceId);
+
+  if (appErrorsError) {
+    throw new Error(`app_errors delete failed: ${appErrorsError.message}`);
+  }
+
+  const { error: userError } = await supabase
+    .from("test_users")
+    .delete()
+    .eq("device_id", deviceId);
+
+  if (userError) {
+    throw new Error(`test_users delete failed: ${userError.message}`);
+  }
+
+  const stillExisting = await getTestUserByDeviceId(deviceId);
+
+  if (stillExisting) {
+    throw new Error("test_users delete failed: user still exists after delete");
+  }
+
+  return true;
+}  const { error: usageError } = await supabase
+    .from("usage_events")
+    .delete()
+    .eq("device_id", deviceId);
+
   if (usageError) throw usageError;
 
   const { error: appErrorsError } = await supabase

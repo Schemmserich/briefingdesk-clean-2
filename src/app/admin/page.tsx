@@ -352,6 +352,25 @@ async function confirmDeleteUser(user: TestUser) {
     setStatusMessage(
       `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
     );
+  } catch (error: any) {
+    console.error(error);
+    setStatusMessage(
+      `Der Nutzer konnte nicht gelöscht werden. Technischer Grund: ${error?.message || "Unbekannter Fehler"}`
+    );
+  } finally {
+    setDeletingDeviceId(null);
+  }
+}  try {
+    setDeletingDeviceId(user.device_id);
+    setStatusMessage("");
+
+    await deleteTestUserCompletely(user.device_id);
+    setDeleteConfirmDeviceId(null);
+    await loadAllData();
+
+    setStatusMessage(
+      `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
+    );
   } catch (error) {
     console.error(error);
     setStatusMessage("Der Nutzer konnte nicht gelöscht werden.");
