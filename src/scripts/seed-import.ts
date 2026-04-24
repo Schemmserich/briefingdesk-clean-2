@@ -14,7 +14,199 @@ function isFresh(pubDate?: string, maxHours = 24): boolean {
   return published >= cutoff;
 }
 
-function normalizeCategory(sourceCategory: unknown, fallback: string): string {
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractKeywordScore(text: string, keywords: string[]): number {
+  const normalized = normalizeText(text);
+  let score = 0;
+
+  for (const keyword of keywords) {
+    if (normalized.includes(keyword.toLowerCase())) {
+      score += 1;
+    }
+  }
+
+  return score;
+}
+
+function getCategoryScores(text: string) {
+  const politicsKeywords = [
+    "president",
+    "minister",
+    "government",
+    "parliament",
+    "election",
+    "vote",
+    "sanction",
+    "ceasefire",
+    "war",
+    "conflict",
+    "military",
+    "diplomatic",
+    "geopolitical",
+    "ukraine",
+    "iran",
+    "israel",
+    "gaza",
+    "china",
+    "taiwan",
+    "eu summit",
+    "white house",
+    "foreign policy",
+    "regierung",
+    "wahl",
+    "krieg",
+    "sanktion",
+    "waffenruhe",
+    "parlament",
+  ];
+
+  const economyKeywords = [
+    "inflation",
+    "interest rate",
+    "rates",
+    "central bank",
+    "fed",
+    "ecb",
+    "gdp",
+    "exports",
+    "imports",
+    "economy",
+    "economic",
+    "consumer spending",
+    "employment",
+    "labour market",
+    "jobless",
+    "manufacturing",
+    "pmi",
+    "recession",
+    "growth",
+    "macro",
+    "wirtschaft",
+    "konjunktur",
+    "arbeitsmarkt",
+    "export",
+    "import",
+    "inflation",
+    "zins",
+  ];
+
+  const stockMarketKeywords = [
+    "stocks",
+    "stock market",
+    "equities",
+    "shares",
+    "wall street",
+    "nasdaq",
+    "dow jones",
+    "s&p 500",
+    "dax",
+    "nikkei 225",
+    "market rally",
+    "market selloff",
+    "traders",
+    "investors",
+    "benchmark index",
+    "börse",
+    "aktien",
+    "aktienmarkt",
+    "index",
+    "börsen",
+  ];
+
+  const technologyKeywords = [
+    "technology",
+    "tech",
+    "artificial intelligence",
+    " ai ",
+    "ai",
+    "chip",
+    "chips",
+    "semiconductor",
+    "software",
+    "cyber",
+    "cloud",
+    "data center",
+    "robotics",
+    "smartphone",
+    "internet",
+    "platform",
+    "technology sector",
+    "ki",
+    "halbleiter",
+    "software",
+    "cybersecurity",
+  ];
+
+  const scienceKeywords = [
+    "science",
+    "research",
+    "scientist",
+    "space",
+    "laboratory",
+    "physics",
+    "astronomy",
+    "study finds",
+    "study shows",
+    "wissenschaft",
+    "forschung",
+    "studie",
+    "weltraum",
+  ];
+
+  const healthKeywords = [
+    "health",
+    "medical",
+    "medicine",
+    "hospital",
+    "disease",
+    "vaccine",
+    "drug",
+    "pharma",
+    "patient",
+    "treatment",
+    "virus",
+    "gesundheit",
+    "medizin",
+    "krankheit",
+    "impfstoff",
+  ];
+
+  const climateKeywords = [
+    "climate",
+    "emissions",
+    "co2",
+    "renewable",
+    "solar",
+    "wind power",
+    "energy transition",
+    "global warming",
+    "fossil fuel",
+    "carbon",
+    "klima",
+    "emission",
+    "erneuerbar",
+  ];
+
+  return {
+    Politics: extractKeywordScore(text, politicsKeywords),
+    Economy: extractKeywordScore(text, economyKeywords),
+    "Stock Markets": extractKeywordScore(text, stockMarketKeywords),
+    Technology: extractKeywordScore(text, technologyKeywords),
+    Science: extractKeywordScore(text, scienceKeywords),
+    Health: extractKeywordScore(text, healthKeywords),
+    Climate: extractKeywordScore(text, climateKeywords),
+  };
+}
+
+function normalizeFeedCategory(sourceCategory: unknown): string {
   let raw = "";
 
   if (typeof sourceCategory === "string") {
@@ -37,20 +229,15 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
     raw = String((sourceCategory as { name?: unknown }).name ?? "");
   }
 
-  const value = raw.toLowerCase();
+  const value = normalizeText(raw);
 
   if (
     value.includes("politics") ||
     value.includes("politic") ||
     value.includes("government") ||
-    value.includes("election") ||
     value.includes("world") ||
     value.includes("international") ||
-    value.includes("war") ||
-    value.includes("conflict") ||
-    value.includes("diplom") ||
-    value.includes("ausland") ||
-    value.includes("europa")
+    value.includes("ausland")
   ) {
     return "Politics";
   }
@@ -60,9 +247,6 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
     value.includes("economic") ||
     value.includes("business") ||
     value.includes("macro") ||
-    value.includes("inflation") ||
-    value.includes("rates") ||
-    value.includes("gdp") ||
     value.includes("wirtschaft") ||
     value.includes("konjunktur")
   ) {
@@ -72,7 +256,6 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
   if (
     value.includes("market") ||
     value.includes("markets") ||
-    value.includes("stock") ||
     value.includes("stocks") ||
     value.includes("equities") ||
     value.includes("börse") ||
@@ -82,14 +265,11 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
   }
 
   if (
-    value.includes("tech") ||
     value.includes("technology") ||
+    value.includes("tech") ||
     value.includes("ai") ||
-    value.includes("artificial intelligence") ||
     value.includes("software") ||
-    value.includes("cyber") ||
-    value.includes("chip") ||
-    value.includes("semiconductor")
+    value.includes("chip")
   ) {
     return "Technology";
   }
@@ -97,7 +277,6 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
   if (
     value.includes("science") ||
     value.includes("research") ||
-    value.includes("space") ||
     value.includes("forschung") ||
     value.includes("wissenschaft")
   ) {
@@ -108,8 +287,6 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
     value.includes("health") ||
     value.includes("medical") ||
     value.includes("medicine") ||
-    value.includes("hospital") ||
-    value.includes("disease") ||
     value.includes("gesundheit")
   ) {
     return "Health";
@@ -119,124 +296,24 @@ function normalizeCategory(sourceCategory: unknown, fallback: string): string {
     value.includes("climate") ||
     value.includes("energy") ||
     value.includes("emissions") ||
-    value.includes("co2") ||
     value.includes("klima")
   ) {
     return "Climate";
   }
 
-  return fallback;
-}
-
-function normalizeCategoryFromText(text: string, fallback: string): string {
-  const value = text.toLowerCase();
-
-  if (
-    value.includes("president") ||
-    value.includes("minister") ||
-    value.includes("government") ||
-    value.includes("parliament") ||
-    value.includes("election") ||
-    value.includes("ukraine") ||
-    value.includes("iran") ||
-    value.includes("china") ||
-    value.includes("taiwan") ||
-    value.includes("sanction") ||
-    value.includes("ceasefire") ||
-    value.includes("diplomatic") ||
-    value.includes("geopolitical")
-  ) {
-    return "Politics";
-  }
-
-  if (
-    value.includes("inflation") ||
-    value.includes("economy") ||
-    value.includes("economic") ||
-    value.includes("interest rate") ||
-    value.includes("central bank") ||
-    value.includes("gdp") ||
-    value.includes("exports") ||
-    value.includes("imports") ||
-    value.includes("consumer") ||
-    value.includes("employment")
-  ) {
-    return "Economy";
-  }
-
-  if (
-    value.includes("stocks") ||
-    value.includes("stock market") ||
-    value.includes("equities") ||
-    value.includes("shares") ||
-    value.includes("wall street") ||
-    value.includes("nasdaq") ||
-    value.includes("s&p") ||
-    value.includes("dow jones") ||
-    value.includes("dax") ||
-    value.includes("market rally")
-  ) {
-    return "Stock Markets";
-  }
-
-  if (
-    value.includes("technology") ||
-    value.includes("tech") ||
-    value.includes("artificial intelligence") ||
-    value.includes("ai ") ||
-    value.includes(" ai") ||
-    value.includes("chip") ||
-    value.includes("semiconductor") ||
-    value.includes("software") ||
-    value.includes("cyber")
-  ) {
-    return "Technology";
-  }
-
-  if (
-    value.includes("science") ||
-    value.includes("research") ||
-    value.includes("scientist") ||
-    value.includes("space")
-  ) {
-    return "Science";
-  }
-
-  if (
-    value.includes("health") ||
-    value.includes("medical") ||
-    value.includes("medicine") ||
-    value.includes("hospital") ||
-    value.includes("disease") ||
-    value.includes("vaccine")
-  ) {
-    return "Health";
-  }
-
-  if (
-    value.includes("climate") ||
-    value.includes("emissions") ||
-    value.includes("energy transition") ||
-    value.includes("renewable") ||
-    value.includes("global warming")
-  ) {
-    return "Climate";
-  }
-
-  return fallback;
+  return "";
 }
 
 function chooseCategory(
   item: { categories?: string[]; title?: string; content?: string; contentSnippet?: string },
   fallback: string
 ): string {
-  const categoryFromFeed = normalizeCategory(
-    Array.isArray(item.categories) ? item.categories[0] : item.categories,
-    ""
+  const feedCategory = normalizeFeedCategory(
+    Array.isArray(item.categories) ? item.categories[0] : item.categories
   );
 
-  if (categoryFromFeed) {
-    return categoryFromFeed;
+  if (feedCategory) {
+    return feedCategory;
   }
 
   const text = [
@@ -245,7 +322,31 @@ function chooseCategory(
     item.content ?? "",
   ].join(" ");
 
-  return normalizeCategoryFromText(text, fallback);
+  const scores = getCategoryScores(text);
+
+  const orderedCategories: Array<keyof typeof scores> = [
+    "Politics",
+    "Economy",
+    "Stock Markets",
+    "Technology",
+    "Science",
+    "Health",
+    "Climate",
+  ];
+
+  let bestCategory = fallback;
+  let bestScore = 0;
+
+  for (const category of orderedCategories) {
+    const score = scores[category];
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestCategory = category;
+    }
+  }
+
+  return bestScore > 0 ? bestCategory : fallback;
 }
 
 async function importBbcWorldFeed(): Promise<ImportedArticle[]> {
