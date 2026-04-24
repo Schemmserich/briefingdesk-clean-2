@@ -51,17 +51,31 @@ export default function AdminPage() {
     }
   }
 
-  useEffect(() => {
-    const hasAdminCookie =
-      typeof document !== "undefined" &&
-      document.cookie.includes("newsbriefing_admin=true");
+  async function checkAdminSession() {
+    try {
+      const response = await fetch("/api/admin-session", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-    if (hasAdminCookie) {
-      setAuthorized(true);
-      loadUsers();
+      const result = await response.json();
+
+      if (result?.authorized) {
+        setAuthorized(true);
+        await loadUsers();
+      } else {
+        setAuthorized(false);
+      }
+    } catch (error) {
+      console.error(error);
+      setAuthorized(false);
+    } finally {
+      setChecking(false);
     }
+  }
 
-    setChecking(false);
+  useEffect(() => {
+    checkAdminSession();
   }, []);
 
   async function handleLogin() {
@@ -83,9 +97,8 @@ export default function AdminPage() {
         return;
       }
 
-      setAuthorized(true);
       setPasscode("");
-      await loadUsers();
+      await checkAdminSession();
     } catch {
       setLoginError("Admin-Login konnte nicht durchgeführt werden.");
     }
