@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { BriefingAudioPlayer } from "@/components/BriefingAudioPlayer";
 import { i18n } from "@/lib/i18n";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Language = "de" | "en";
 
@@ -144,6 +145,23 @@ function localizeCategory(value: string | undefined, language: Language): string
   return labels[key]?.[language] ?? value;
 }
 
+function getCategoryBadgeClass(category: string | undefined): string {
+  const key = normalizeCategoryKey(category ?? "");
+
+  const styles: Record<string, string> = {
+    Politics: "border-blue-400/35 bg-blue-500/12 text-blue-300",
+    Economy: "border-emerald-400/35 bg-emerald-500/12 text-emerald-300",
+    "Stock Markets": "border-amber-400/35 bg-amber-500/12 text-amber-300",
+    Technology: "border-violet-400/35 bg-violet-500/12 text-violet-300",
+    Science: "border-cyan-400/35 bg-cyan-500/12 text-cyan-300",
+    Health: "border-rose-400/35 bg-rose-500/12 text-rose-300",
+    Climate: "border-green-400/35 bg-green-500/12 text-green-300",
+    General: "border-white/20 bg-white/5 text-white/80",
+  };
+
+  return styles[key] ?? styles.General;
+}
+
 function normalizeRegionKey(value: string): string {
   const normalized = value.trim().toLowerCase();
 
@@ -179,10 +197,10 @@ function localizeRegion(value: string | undefined, language: Language): string {
   return labels[key]?.[language] ?? value;
 }
 
-function inferCategoryFromSection(section: BriefingSection, language: Language): string {
+function inferCategoryKeyFromSection(section: BriefingSection): string {
   const explicitCategory = safeText(section.category);
   if (explicitCategory) {
-    return localizeCategory(explicitCategory, language);
+    return normalizeCategoryKey(explicitCategory);
   }
 
   const text = `${safeText(section.title)} ${safeText(section.content)}`.toLowerCase();
@@ -203,7 +221,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("minister") ||
     text.includes("geopolitical")
   ) {
-    return localizeCategory("Politics", language);
+    return "Politics";
   }
 
   if (
@@ -220,7 +238,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("konjunktur") ||
     text.includes("earnings")
   ) {
-    return localizeCategory("Economy", language);
+    return "Economy";
   }
 
   if (
@@ -238,7 +256,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("nasdaq") ||
     text.includes("s&p")
   ) {
-    return localizeCategory("Stock Markets", language);
+    return "Stock Markets";
   }
 
   if (
@@ -252,7 +270,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("cyber") ||
     text.includes("digital")
   ) {
-    return localizeCategory("Technology", language);
+    return "Technology";
   }
 
   if (
@@ -261,7 +279,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("study") ||
     text.includes("wissenschaft")
   ) {
-    return localizeCategory("Science", language);
+    return "Science";
   }
 
   if (
@@ -271,7 +289,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("disease") ||
     text.includes("hospital")
   ) {
-    return localizeCategory("Health", language);
+    return "Health";
   }
 
   if (
@@ -281,10 +299,10 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("co2") ||
     text.includes("energy transition")
   ) {
-    return localizeCategory("Climate", language);
+    return "Climate";
   }
 
-  return localizeCategory("General", language);
+  return "General";
 }
 
 function buildFullText(briefing: BriefingDisplayData) {
@@ -431,28 +449,38 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
           </div>
 
           <div className="space-y-4">
-            {sections.map((section, idx) => (
-              <Card key={`${section.title ?? "section"}-${idx}`} className="briefing-card overflow-hidden">
-                <CardHeader className="space-y-3 p-4 sm:p-6">
-                  <div>
-                    <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-                      {inferCategoryFromSection(section, language)}
-                    </span>
-                  </div>
+            {sections.map((section, idx) => {
+              const categoryKey = inferCategoryKeyFromSection(section);
+              const categoryLabel = localizeCategory(categoryKey, language);
 
-                  <CardTitle className="text-lg sm:text-xl font-bold text-white leading-snug break-words">
-                    {safeText(section.title) ||
-                      (language === "de" ? `Zusammenfassung ${idx + 1}` : `Summary ${idx + 1}`)}
-                  </CardTitle>
-                </CardHeader>
+              return (
+                <Card key={`${section.title ?? "section"}-${idx}`} className="briefing-card overflow-hidden">
+                  <CardHeader className="space-y-3 p-4 sm:p-6">
+                    <div>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
+                          getCategoryBadgeClass(categoryKey)
+                        )}
+                      >
+                        {categoryLabel}
+                      </span>
+                    </div>
 
-                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-                  <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8 break-words">
-                    {safeText(section.content)}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardTitle className="text-lg sm:text-xl font-bold text-white leading-snug break-words">
+                      {safeText(section.title) ||
+                        (language === "de" ? `Zusammenfassung ${idx + 1}` : `Summary ${idx + 1}`)}
+                    </CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                    <p className="text-sm sm:text-base text-muted-foreground leading-7 sm:leading-8 break-words">
+                      {safeText(section.content)}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
       )}
@@ -542,45 +570,55 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
 
           {showSources && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {sources.map((source, idx) => (
-                <a
-                  key={`${source.id ?? source.url ?? source.title ?? "source"}-${idx}`}
-                  href={source.url || "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="briefing-card p-4 sm:p-5 block hover:border-primary/50 transition-colors min-w-0"
-                >
-                  <div className="space-y-3 min-w-0">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-primary">
-                          {safeText(source.sourceName) || (language === "de" ? "Quelle" : "Source")}
+              {sources.map((source, idx) => {
+                const categoryKey = normalizeCategoryKey(source.category ?? "");
+                const categoryLabel = localizeCategory(source.category, language);
+
+                return (
+                  <a
+                    key={`${source.id ?? source.url ?? source.title ?? "source"}-${idx}`}
+                    href={source.url || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="briefing-card p-4 sm:p-5 block hover:border-primary/50 transition-colors min-w-0"
+                  >
+                    <div className="space-y-3 min-w-0">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-primary">
+                            {safeText(source.sourceName) || (language === "de" ? "Quelle" : "Source")}
+                          </div>
+                          <div className="text-sm sm:text-base font-semibold text-white leading-snug mt-1 break-words">
+                            {safeText(source.title) || "—"}
+                          </div>
                         </div>
-                        <div className="text-sm sm:text-base font-semibold text-white leading-snug mt-1 break-words">
-                          {safeText(source.title) || "—"}
+
+                        <div className="text-xs text-muted-foreground shrink-0">
+                          {formatDateTime(source.publicationDate, language)}
                         </div>
                       </div>
 
-                      <div className="text-xs text-muted-foreground shrink-0">
-                        {formatDateTime(source.publicationDate, language)}
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {safeText(source.region) && (
+                          <span className="rounded-full border border-white/10 px-2 py-1">
+                            {localizeRegion(source.region, language)}
+                          </span>
+                        )}
+                        {safeText(source.category) && (
+                          <span
+                            className={cn(
+                              "rounded-full border px-2 py-1 font-medium",
+                              getCategoryBadgeClass(categoryKey)
+                            )}
+                          >
+                            {categoryLabel}
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      {safeText(source.region) && (
-                        <span className="rounded-full border border-white/10 px-2 py-1">
-                          {localizeRegion(source.region, language)}
-                        </span>
-                      )}
-                      {safeText(source.category) && (
-                        <span className="rounded-full border border-white/10 px-2 py-1">
-                          {localizeCategory(source.category, language)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </a>
-              ))}
+                  </a>
+                );
+              })}
             </div>
           )}
         </section>
