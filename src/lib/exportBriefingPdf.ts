@@ -70,6 +70,33 @@ function addSectionTitle(
   return y;
 }
 
+function derivePdfHeadline(entry: ArchivedBriefing) {
+  const briefing = entry.briefing ?? {};
+  const briefingType = String(briefing.briefingType ?? entry.params?.briefingType ?? "").trim();
+  let mainTitle = String(briefing.mainTitle ?? "").trim();
+
+  if (!mainTitle) {
+    const overview = String(briefing.overviewParagraph ?? "").trim();
+    if (overview) {
+      const firstSentence = overview.split(/(?<=[.!?])\s+/)[0]?.trim() || overview;
+      mainTitle =
+        firstSentence.length > 120
+          ? `${firstSentence.slice(0, 117).trim()}...`
+          : firstSentence;
+    }
+  }
+
+  if (!mainTitle) {
+    mainTitle = entry.name;
+  }
+
+  if (briefingType && mainTitle) {
+    return `${briefingType}: ${mainTitle}`;
+  }
+
+  return mainTitle || briefingType || entry.name || "News Briefing";
+}
+
 export function exportArchivedBriefingToPdf(entry: ArchivedBriefing) {
   const briefing = entry.briefing ?? {};
   const language: "de" | "en" = entry.language === "de" ? "de" : "en";
@@ -89,8 +116,7 @@ export function exportArchivedBriefingToPdf(entry: ArchivedBriefing) {
 
   let y = 20;
 
-  const titleParts = [briefing.briefingType, briefing.mainTitle].filter(Boolean);
-  const fullTitle = titleParts.length ? titleParts.join(": ") : entry.name;
+  const fullTitle = derivePdfHeadline(entry);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);

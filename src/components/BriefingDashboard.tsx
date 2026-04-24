@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { i18n } from "@/lib/i18n";
 import { Language, BriefingRequest, BriefingType, BriefingResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -76,15 +76,30 @@ type DashboardParams = {
   includeChangeAnalysis: boolean;
 };
 
+type ValidationState = {
+  timeframe: boolean;
+  regions: boolean;
+  categories: boolean;
+  briefingType: boolean;
+};
+
 type FilterPanelProps = {
   lang: Language;
   setLang: (lang: Language) => void;
   params: DashboardParams;
   setParams: React.Dispatch<React.SetStateAction<DashboardParams>>;
+  validation: ValidationState;
   showValidation: boolean;
 };
 
-function FilterPanel({ lang, setLang, params, setParams, showValidation }: FilterPanelProps) {
+function FilterPanel({
+  lang,
+  setLang,
+  params,
+  setParams,
+  validation,
+  showValidation,
+}: FilterPanelProps) {
   const t = i18n[lang];
 
   const toggleCategory = (cat: string) => {
@@ -112,15 +127,10 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
     { value: "Executive Summary", label: t.briefingTypes.executive },
   ];
 
-  const timeframeMissing = showValidation && !params.timeframe;
-  const regionsMissing = showValidation && params.regions.length === 0;
-  const categoriesMissing = showValidation && params.categories.length === 0;
-  const formatMissing = showValidation && !params.briefingType;
-
-  function labelClass(isError: boolean) {
+  function labelClass(hasError: boolean) {
     return cn(
       "text-xs uppercase tracking-wider flex items-center gap-2",
-      isError ? "text-red-400" : "text-muted-foreground"
+      showValidation && hasError ? "text-red-400" : "text-muted-foreground"
     );
   }
 
@@ -166,7 +176,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
 
       <CardContent className="pt-5 sm:pt-6 space-y-6 max-w-full overflow-x-hidden">
         <div className="space-y-3">
-          <Label className={labelClass(timeframeMissing)}>
+          <Label className={labelClass(!validation.timeframe)}>
             <Calendar className="w-3 h-3 shrink-0" /> {t.timeframe}
           </Label>
 
@@ -180,7 +190,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
                   "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.timeframe === key
                     ? "bg-primary border-primary text-white"
-                    : timeframeMissing
+                    : showValidation && !validation.timeframe
                     ? "border-red-400/40 text-red-300 hover:border-red-400/60"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
                 )}
@@ -190,7 +200,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
             ))}
           </div>
 
-          {timeframeMissing && (
+          {showValidation && !validation.timeframe && (
             <p className="text-xs text-red-400">
               {lang === "de"
                 ? "Bitte wähle zuerst ein Zeitfenster aus."
@@ -200,7 +210,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
         </div>
 
         <div className="space-y-3">
-          <Label className={labelClass(regionsMissing)}>
+          <Label className={labelClass(!validation.regions)}>
             <Globe className="w-3 h-3 shrink-0" /> {t.regions}
           </Label>
 
@@ -214,7 +224,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
                   "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.regions.includes(reg)
                     ? "bg-accent border-accent text-white"
-                    : regionsMissing
+                    : showValidation && !validation.regions
                     ? "border-red-400/40 text-red-300 hover:border-red-400/60"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
                 )}
@@ -224,7 +234,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
             ))}
           </div>
 
-          {regionsMissing && (
+          {showValidation && !validation.regions && (
             <p className="text-xs text-red-400">
               {lang === "de"
                 ? "Bitte wähle mindestens eine Region aus."
@@ -234,7 +244,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
         </div>
 
         <div className="space-y-3">
-          <Label className={labelClass(categoriesMissing)}>
+          <Label className={labelClass(!validation.categories)}>
             <Layers className="w-3 h-3 shrink-0" /> {t.categories}
           </Label>
 
@@ -248,7 +258,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
                   "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
                   params.categories.includes(cat)
                     ? "bg-secondary border-primary/40 text-white"
-                    : categoriesMissing
+                    : showValidation && !validation.categories
                     ? "border-red-400/40 text-red-300 hover:border-red-400/60"
                     : "border-white/10 text-muted-foreground hover:border-white/20"
                 )}
@@ -258,7 +268,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
             ))}
           </div>
 
-          {categoriesMissing && (
+          {showValidation && !validation.categories && (
             <p className="text-xs text-red-400">
               {lang === "de"
                 ? "Bitte wähle mindestens eine Kategorie aus."
@@ -268,7 +278,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
         </div>
 
         <div className="space-y-3 min-w-0">
-          <Label className={labelClass(formatMissing)}>
+          <Label className={labelClass(!validation.briefingType)}>
             {t.outputFormat}
           </Label>
 
@@ -282,7 +292,9 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
               <SelectTrigger
                 className={cn(
                   "bg-secondary/50 min-h-11 w-full min-w-0",
-                  formatMissing ? "border-red-400/40 text-red-300" : "border-white/10"
+                  showValidation && !validation.briefingType
+                    ? "border-red-400/40 text-red-300"
+                    : "border-white/10"
                 )}
               >
                 <SelectValue placeholder={lang === "de" ? "Bitte auswählen" : "Please select"} />
@@ -308,7 +320,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
                   "w-full rounded-xl border px-3 py-3 text-sm text-left transition min-h-12",
                   params.briefingType === option.value
                     ? "bg-primary border-primary text-white"
-                    : formatMissing
+                    : showValidation && !validation.briefingType
                     ? "border-red-400/40 bg-red-500/5 text-red-300 hover:bg-red-500/10"
                     : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/5 hover:text-white"
                 )}
@@ -318,7 +330,7 @@ function FilterPanel({ lang, setLang, params, setParams, showValidation }: Filte
             ))}
           </div>
 
-          {formatMissing && (
+          {showValidation && !validation.briefingType && (
             <p className="text-xs text-red-400">
               {lang === "de"
                 ? "Bitte wähle ein Ausgabeformat aus."
@@ -397,45 +409,63 @@ export function BriefingDashboard() {
     document.title = "News Briefing";
   }, []);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    count += params.timeframe ? 1 : 0;
-    count += params.categories.length;
-    count += params.regions.length;
-    count += params.briefingType ? 1 : 0;
-    count += params.includeMarketInsights ? 1 : 0;
-    count += params.includeChangeAnalysis ? 1 : 0;
-    return count;
-  }, [params]);
-
-  function validateParams() {
+  function validateParams(currentParams: DashboardParams): ValidationState {
     return {
-      timeframe: !!params.timeframe,
-      regions: params.regions.length > 0,
-      categories: params.categories.length > 0,
-      briefingType: !!params.briefingType,
+      timeframe: !!currentParams.timeframe,
+      regions: currentParams.regions.length > 0,
+      categories: currentParams.categories.length > 0,
+      briefingType: !!currentParams.briefingType,
     };
   }
 
-  const handleGenerate = async () => {
-    const validation = validateParams();
-    const isValid = Object.values(validation).every(Boolean);
+  function isValid(validation: ValidationState) {
+    return Object.values(validation).every(Boolean);
+  }
 
-    if (!isValid) {
+  function showValidationErrorToast() {
+    toast({
+      variant: "destructive",
+      title: lang === "de" ? "Einstellungen unvollständig" : "Settings incomplete",
+      description:
+        lang === "de"
+          ? "Bitte wähle zuerst Zeitfenster, mindestens eine Region, mindestens eine Kategorie und ein Ausgabeformat aus."
+          : "Please select a timeframe, at least one region, at least one category, and an output format first.",
+    });
+  }
+
+  const validation = validateParams(params);
+
+  const handleApplySettings = () => {
+    const nextValidation = validateParams(params);
+
+    if (!isValid(nextValidation)) {
       setShowValidation(true);
-
-      toast({
-        variant: "destructive",
-        title: lang === "de" ? "Einstellungen unvollständig" : "Settings incomplete",
-        description:
-          lang === "de"
-            ? "Bitte wähle zuerst Zeitfenster, mindestens eine Region, mindestens eine Kategorie und ein Ausgabeformat aus."
-            : "Please select a timeframe, at least one region, at least one category, and an output format first.",
-      });
-
+      showValidationErrorToast();
       return;
     }
 
+    setShowValidation(false);
+    setMobileFiltersOpen(false);
+
+    toast({
+      title: lang === "de" ? "Einstellungen übernommen" : "Settings applied",
+      description:
+        lang === "de"
+          ? "Die Filtereinstellungen wurden übernommen."
+          : "The filter settings have been applied.",
+    });
+  };
+
+  const handleGenerate = async () => {
+    const nextValidation = validateParams(params);
+
+    if (!isValid(nextValidation)) {
+      setShowValidation(true);
+      showValidationErrorToast();
+      return;
+    }
+
+    setShowValidation(false);
     setLoading(true);
     setResult(null);
 
@@ -543,11 +573,12 @@ export function BriefingDashboard() {
               setLang={setLang}
               params={params}
               setParams={setParams}
+              validation={validation}
               showValidation={showValidation}
             />
 
             <div className="grid grid-cols-1 gap-3">
-              {showValidation && (
+              {showValidation && !isValid(validation) && (
                 <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 leading-6">
                   {lang === "de"
                     ? "Die Einstellungen sind noch nicht vollständig. Bitte wähle zuerst Zeitfenster, Region, Kategorie und Ausgabeformat aus."
@@ -584,10 +615,11 @@ export function BriefingDashboard() {
                     setLang={setLang}
                     params={params}
                     setParams={setParams}
+                    validation={validation}
                     showValidation={showValidation}
                   />
 
-                  {showValidation && (
+                  {showValidation && !isValid(validation) && (
                     <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 leading-6">
                       {lang === "de"
                         ? "Die Einstellungen sind noch nicht vollständig. Bitte wähle zuerst Zeitfenster, Region, Kategorie und Ausgabeformat aus."
@@ -600,7 +632,7 @@ export function BriefingDashboard() {
                   <Button
                     size="lg"
                     className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
-                    onClick={() => setMobileFiltersOpen(false)}
+                    onClick={handleApplySettings}
                   >
                     {lang === "de" ? "Einstellungen übernehmen" : "Apply settings"}
                   </Button>

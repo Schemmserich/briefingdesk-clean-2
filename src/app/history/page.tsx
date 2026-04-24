@@ -201,6 +201,7 @@ export default function HistoryPage() {
                   <BriefingDisplay
                     briefing={selectedEntry.briefing}
                     language={selectedEntry.language}
+                    fallbackTitle={selectedEntry.name}
                   />
                 ) : (
                   <div className="min-h-[420px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">

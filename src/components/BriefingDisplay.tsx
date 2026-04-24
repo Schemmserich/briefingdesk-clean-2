@@ -44,6 +44,7 @@ type BriefingDisplayData = {
 type BriefingDisplayProps = {
   briefing: BriefingDisplayData;
   language: Language;
+  fallbackTitle?: string;
 };
 
 function safeText(value: unknown): string {
@@ -331,7 +332,38 @@ function buildFullText(briefing: BriefingDisplayData) {
   return parts.join("\n\n");
 }
 
-export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
+function deriveHeadline(briefing: BriefingDisplayData, fallbackTitle?: string) {
+  const briefingType = safeText(briefing.briefingType);
+  const mainTitle = safeText(briefing.mainTitle);
+  const overview = safeText(briefing.overviewParagraph);
+  const fallback = safeText(fallbackTitle);
+
+  let derivedTitle = mainTitle;
+
+  if (!derivedTitle && overview) {
+    const firstSentence = overview.split(/(?<=[.!?])\s+/)[0]?.trim() || overview;
+    derivedTitle =
+      firstSentence.length > 120
+        ? `${firstSentence.slice(0, 117).trim()}...`
+        : firstSentence;
+  }
+
+  if (!derivedTitle) {
+    derivedTitle = fallback;
+  }
+
+  if (briefingType && derivedTitle) {
+    return `${briefingType}: ${derivedTitle}`;
+  }
+
+  return derivedTitle || briefingType || fallback;
+}
+
+export function BriefingDisplay({
+  briefing,
+  language,
+  fallbackTitle,
+}: BriefingDisplayProps) {
   const t = i18n[language];
   const sections = briefing.sections ?? [];
   const sources = briefing.usedSources ?? [];
@@ -339,6 +371,10 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
   const [showFullText, setShowFullText] = useState(false);
 
   const fullText = useMemo(() => buildFullText(briefing), [briefing]);
+  const headline = useMemo(
+    () => deriveHeadline(briefing, fallbackTitle),
+    [briefing, fallbackTitle]
+  );
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-full overflow-x-hidden">
@@ -362,9 +398,11 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl xl:text-4xl font-headline font-bold text-white leading-tight break-words">
-              {[briefing.briefingType, briefing.mainTitle].filter(Boolean).join(": ")}
-            </h1>
+            {headline && (
+              <h1 className="text-2xl sm:text-3xl xl:text-4xl font-headline font-bold text-white leading-tight break-words">
+                {headline}
+              </h1>
+            )}
 
             <p className="text-base sm:text-lg xl:text-xl text-muted-foreground leading-7 sm:leading-8 font-medium">
               {briefing.overviewParagraph}
