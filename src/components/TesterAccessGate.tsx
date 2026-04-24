@@ -58,13 +58,15 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
 
       setStatus("pending");
     } catch (error: any) {
-      await logAppError({
-        deviceId: typeof window !== "undefined" ? getOrCreateDeviceId() : undefined,
-        errorMessage: error?.message || "Failed to load tester state",
-        context: {
-          location: "TesterAccessGate.loadTesterState",
-        },
-      });
+      try {
+        await logAppError({
+          deviceId: typeof window !== "undefined" ? getOrCreateDeviceId() : undefined,
+          errorMessage: error?.message || "Failed to load tester state",
+          context: {
+            location: "TesterAccessGate.loadTesterState",
+          },
+        });
+      } catch {}
 
       setErrorMessage("Die Testfreigabe konnte gerade nicht geladen werden.");
       setStatus("unregistered");
@@ -107,13 +109,15 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
 
       setStatus("pending");
     } catch (error: any) {
-      await logAppError({
-        deviceId: typeof window !== "undefined" ? getOrCreateDeviceId() : undefined,
-        errorMessage: error?.message || "Failed to register tester",
-        context: {
-          location: "TesterAccessGate.handleRegister",
-        },
-      });
+      try {
+        await logAppError({
+          deviceId: typeof window !== "undefined" ? getOrCreateDeviceId() : undefined,
+          errorMessage: error?.message || "Failed to register tester",
+          context: {
+            location: "TesterAccessGate.handleRegister",
+          },
+        });
+      } catch {}
 
       setErrorMessage("Die Registrierung konnte gerade nicht gespeichert werden.");
     } finally {

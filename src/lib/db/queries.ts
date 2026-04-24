@@ -162,3 +162,37 @@ export async function logAppError(input: {
 
   if (error) throw error;
 }
+
+export async function getAllTestUsers() {
+  const { data, error } = await supabase
+    .from("test_users")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function updateTestUserStatus(input: {
+  deviceId: string;
+  status: "pending" | "approved" | "blocked";
+}) {
+  const updatePayload: Record<string, unknown> = {
+    status: input.status,
+    last_seen_at: new Date().toISOString(),
+  };
+
+  if (input.status === "approved") {
+    updatePayload.approved_at = new Date().toISOString();
+  }
+
+  const { data, error } = await supabase
+    .from("test_users")
+    .update(updatePayload)
+    .eq("device_id", input.deviceId)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
