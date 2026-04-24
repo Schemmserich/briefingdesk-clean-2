@@ -28,7 +28,7 @@ type UsedSource = {
 type BriefingDisplayData = {
   mainTitle?: string;
   overviewParagraph?: string;
-briefingType?: string;
+  briefingType?: string;
   confidenceScore?: number;
   sections?: BriefingSection[];
   whyMarketsCare?: string;
@@ -104,9 +104,86 @@ function formatWindow(start?: string | null, end?: string | null, language: Lang
   return `${formatDateTime(start, language)} – ${formatDateTime(end, language)}`;
 }
 
+function normalizeCategoryKey(value: string): string {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "politics" || normalized === "politik") return "Politics";
+  if (normalized === "economy" || normalized === "wirtschaft") return "Economy";
+  if (
+    normalized === "stock markets" ||
+    normalized === "stock market" ||
+    normalized === "börse" ||
+    normalized === "boerse"
+  ) {
+    return "Stock Markets";
+  }
+  if (normalized === "technology" || normalized === "technologie") return "Technology";
+  if (normalized === "science" || normalized === "wissenschaft") return "Science";
+  if (normalized === "health" || normalized === "gesundheit") return "Health";
+  if (normalized === "climate" || normalized === "klima") return "Climate";
+
+  return "General";
+}
+
+function localizeCategory(value: string | undefined, language: Language): string {
+  if (!value) return "";
+
+  const key = normalizeCategoryKey(value);
+
+  const labels: Record<string, { de: string; en: string }> = {
+    Politics: { de: "Politik", en: "Politics" },
+    Economy: { de: "Wirtschaft", en: "Economy" },
+    "Stock Markets": { de: "Börse", en: "Stock Markets" },
+    Technology: { de: "Technologie", en: "Technology" },
+    Science: { de: "Wissenschaft", en: "Science" },
+    Health: { de: "Gesundheit", en: "Health" },
+    Climate: { de: "Klima", en: "Climate" },
+    General: { de: "Allgemein", en: "General" },
+  };
+
+  return labels[key]?.[language] ?? value;
+}
+
+function normalizeRegionKey(value: string): string {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "global") return "Global";
+  if (normalized === "europe" || normalized === "europa") return "Europe";
+  if (normalized === "north america" || normalized === "nordamerika") return "North America";
+  if (normalized === "asia" || normalized === "asien") return "Asia";
+  if (
+    normalized === "me&a" ||
+    normalized === "nahost, afrika" ||
+    normalized === "middle east" ||
+    normalized === "middle east & africa"
+  ) {
+    return "ME&A";
+  }
+
+  return value;
+}
+
+function localizeRegion(value: string | undefined, language: Language): string {
+  if (!value) return "";
+
+  const key = normalizeRegionKey(value);
+
+  const labels: Record<string, { de: string; en: string }> = {
+    Global: { de: "Global", en: "Global" },
+    Europe: { de: "Europa", en: "Europe" },
+    "North America": { de: "Nordamerika", en: "North America" },
+    Asia: { de: "Asien", en: "Asia" },
+    "ME&A": { de: "Nahost, Afrika", en: "ME&A" },
+  };
+
+  return labels[key]?.[language] ?? value;
+}
+
 function inferCategoryFromSection(section: BriefingSection, language: Language): string {
   const explicitCategory = safeText(section.category);
-  if (explicitCategory) return explicitCategory;
+  if (explicitCategory) {
+    return localizeCategory(explicitCategory, language);
+  }
 
   const text = `${safeText(section.title)} ${safeText(section.content)}`.toLowerCase();
 
@@ -126,7 +203,24 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("minister") ||
     text.includes("geopolitical")
   ) {
-    return language === "de" ? "Politik" : "Politics";
+    return localizeCategory("Politics", language);
+  }
+
+  if (
+    text.includes("wirtschaft") ||
+    text.includes("economy") ||
+    text.includes("economic") ||
+    text.includes("inflation") ||
+    text.includes("gdp") ||
+    text.includes("exports") ||
+    text.includes("import") ||
+    text.includes("zinsen") ||
+    text.includes("interest rate") ||
+    text.includes("central bank") ||
+    text.includes("konjunktur") ||
+    text.includes("earnings")
+  ) {
+    return localizeCategory("Economy", language);
   }
 
   if (
@@ -134,6 +228,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("markets") ||
     text.includes("stock") ||
     text.includes("börse") ||
+    text.includes("börsen") ||
     text.includes("aktien") ||
     text.includes("equities") ||
     text.includes("investor") ||
@@ -143,22 +238,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("nasdaq") ||
     text.includes("s&p")
   ) {
-    return language === "de" ? "Börse" : "Stock Markets";
-  }
-
-  if (
-    text.includes("wirtschaft") ||
-    text.includes("economy") ||
-    text.includes("economic") ||
-    text.includes("inflation") ||
-    text.includes("exports") ||
-    text.includes("import") ||
-    text.includes("interest rate") ||
-    text.includes("central bank") ||
-    text.includes("konjunktur") ||
-    text.includes("earnings")
-  ) {
-    return language === "de" ? "Wirtschaft" : "Economy";
+    return localizeCategory("Stock Markets", language);
   }
 
   if (
@@ -172,7 +252,7 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("cyber") ||
     text.includes("digital")
   ) {
-    return language === "de" ? "Technologie" : "Technology";
+    return localizeCategory("Technology", language);
   }
 
   if (
@@ -181,28 +261,30 @@ function inferCategoryFromSection(section: BriefingSection, language: Language):
     text.includes("study") ||
     text.includes("wissenschaft")
   ) {
-    return language === "de" ? "Wissenschaft" : "Science";
+    return localizeCategory("Science", language);
   }
 
   if (
     text.includes("health") ||
     text.includes("medizin") ||
     text.includes("medical") ||
+    text.includes("disease") ||
     text.includes("hospital")
   ) {
-    return language === "de" ? "Gesundheit" : "Health";
+    return localizeCategory("Health", language);
   }
 
   if (
     text.includes("climate") ||
     text.includes("klima") ||
     text.includes("emissions") ||
-    text.includes("co2")
+    text.includes("co2") ||
+    text.includes("energy transition")
   ) {
-    return language === "de" ? "Klima" : "Climate";
+    return localizeCategory("Climate", language);
   }
 
-  return language === "de" ? "Allgemein" : "General";
+  return localizeCategory("General", language);
 }
 
 function buildFullText(briefing: BriefingDisplayData) {
@@ -263,8 +345,8 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
             </div>
 
             <h1 className="text-2xl sm:text-3xl xl:text-4xl font-headline font-bold text-white leading-tight break-words">
-  {[briefing.briefingType, briefing.mainTitle].filter(Boolean).join(": ")}
-</h1>
+              {[briefing.briefingType, briefing.mainTitle].filter(Boolean).join(": ")}
+            </h1>
 
             <p className="text-base sm:text-lg xl:text-xl text-muted-foreground leading-7 sm:leading-8 font-medium">
               {briefing.overviewParagraph}
@@ -487,12 +569,12 @@ export function BriefingDisplay({ briefing, language }: BriefingDisplayProps) {
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                       {safeText(source.region) && (
                         <span className="rounded-full border border-white/10 px-2 py-1">
-                          {source.region}
+                          {localizeRegion(source.region, language)}
                         </span>
                       )}
                       {safeText(source.category) && (
                         <span className="rounded-full border border-white/10 px-2 py-1">
-                          {source.category}
+                          {localizeCategory(source.category, language)}
                         </span>
                       )}
                     </div>
