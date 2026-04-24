@@ -112,6 +112,82 @@ function getEventLabel(eventType: string) {
   return eventType;
 }
 
+function getReadableErrorTitle(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+
+  if (normalized.includes("duplicate key value violates unique constraint")) {
+    return "Doppelte Registrierung";
+  }
+
+  if (normalized.includes("invalid passcode")) {
+    return "Ungültiger Admin-Passcode";
+  }
+
+  if (normalized.includes("failed to register tester")) {
+    return "Registrierung fehlgeschlagen";
+  }
+
+  if (normalized.includes("failed to load tester state")) {
+    return "Testerstatus konnte nicht geladen werden";
+  }
+
+  if (normalized.includes("briefing generation failed")) {
+    return "Briefing-Erstellung fehlgeschlagen";
+  }
+
+  if (normalized.includes("unexpected briefing generation error")) {
+    return "Unerwarteter Fehler bei der Briefing-Erstellung";
+  }
+
+  if (normalized.includes("quota")) {
+    return "API-Limit erreicht";
+  }
+
+  if (normalized.includes("503") || normalized.includes("high demand")) {
+    return "KI derzeit ausgelastet";
+  }
+
+  return "Technischer Fehler";
+}
+
+function getReadableErrorDescription(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+
+  if (normalized.includes("duplicate key value violates unique constraint")) {
+    return "Dieses Gerät war bereits registriert. Der vorhandene Testzugang wurde erneut erkannt.";
+  }
+
+  if (normalized.includes("invalid passcode")) {
+    return "Für den Adminbereich wurde ein falscher Passcode eingegeben.";
+  }
+
+  if (normalized.includes("failed to register tester")) {
+    return "Die Registrierung des Testers konnte nicht gespeichert werden.";
+  }
+
+  if (normalized.includes("failed to load tester state")) {
+    return "Der Freigabestatus des Testers konnte nicht geladen werden.";
+  }
+
+  if (normalized.includes("briefing generation failed")) {
+    return "Das Briefing konnte nicht erfolgreich erzeugt werden.";
+  }
+
+  if (normalized.includes("unexpected briefing generation error")) {
+    return "Bei der Briefing-Erstellung ist ein unerwarteter technischer Fehler aufgetreten.";
+  }
+
+  if (normalized.includes("quota")) {
+    return "Das Kontingent der angebundenen KI/API wurde erreicht.";
+  }
+
+  if (normalized.includes("503") || normalized.includes("high demand")) {
+    return "Die KI oder der Dienst war zum Zeitpunkt der Anfrage vorübergehend überlastet.";
+  }
+
+  return "Es ist ein technischer Fehler aufgetreten. Der Originaltext steht unten zur genaueren Prüfung.";
+}
+
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -640,37 +716,51 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {appErrors.map((errorRow) => (
-                      <Card key={errorRow.id} className="briefing-card border-red-400/15">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div className="space-y-1">
-                              <div className="text-base font-semibold text-white">
-                                {errorRow.device_id
-                                  ? getUserNameByDeviceId(errorRow.device_id, users)
-                                  : "Unbekannter Tester"}
-                              </div>
-                              <div className="text-sm text-red-300">
-                                {errorRow.error_message}
-                              </div>
-                            </div>
+                  {appErrors.map((errorRow) => (
+  <Card key={errorRow.id} className="briefing-card border-red-400/15">
+    <CardContent className="p-4 space-y-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-2">
+          <div className="text-base font-semibold text-white">
+            {errorRow.device_id
+              ? getUserNameByDeviceId(errorRow.device_id, users)
+              : "Unbekannter Tester"}
+          </div>
 
-                            <div className="text-sm text-muted-foreground">
-                              {formatDate(errorRow.created_at)}
-                            </div>
-                          </div>
+          <div className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
+            {getReadableErrorTitle(errorRow.error_message)}
+          </div>
 
-                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Kontext
-                            </div>
-                            <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
-                              {JSON.stringify(errorRow.context ?? {}, null, 2)}
-                            </pre>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+          <div className="text-sm text-white/90 leading-6">
+            {getReadableErrorDescription(errorRow.error_message)}
+          </div>
+        </div>
+
+        <div className="text-sm text-muted-foreground">
+          {formatDate(errorRow.created_at)}
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+          Technischer Originaltext
+        </div>
+        <div className="mt-2 text-red-300 break-words">
+          {errorRow.error_message}
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+          Kontext
+        </div>
+        <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
+          {JSON.stringify(errorRow.context ?? {}, null, 2)}
+        </pre>
+      </div>
+    </CardContent>
+  </Card>
+))}
                   </div>
                 )}
               </section>
