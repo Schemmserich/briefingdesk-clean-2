@@ -30,8 +30,9 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
   const [errorMessage, setErrorMessage] = useState("");
 
   async function loadTesterState() {
+    setErrorMessage("");
+
     try {
-      setErrorMessage("");
       getOrCreateDeviceId();
 
       const accountId = getCurrentTesterAccountId();
@@ -49,15 +50,23 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
         return;
       }
 
-      await touchTesterAccountLastSeen(accountId);
+      try {
+        await touchTesterAccountLastSeen(accountId);
+      } catch (error) {
+        console.error("touchTesterAccountLastSeen failed:", error);
+      }
 
-      await logUsageEvent({
-        accountId,
-        eventType: "app_opened",
-        payload: {
-          status: existingAccount.status,
-        },
-      });
+      try {
+        await logUsageEvent({
+          accountId,
+          eventType: "app_opened",
+          payload: {
+            status: existingAccount.status,
+          },
+        });
+      } catch (error) {
+        console.error("logUsageEvent failed:", error);
+      }
 
       if (existingAccount.status === "approved") {
         setStatus("approved");
@@ -71,15 +80,19 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
 
       setStatus("pending");
     } catch (error: any) {
+      console.error("loadTesterState failed:", error);
+
       try {
         await logAppError({
           accountId: getCurrentTesterAccountId() || undefined,
           errorMessage: error?.message || "Failed to load tester state",
           context: { location: "TesterAccessGate.loadTesterState" },
         });
-      } catch {}
+      } catch (logError) {
+        console.error("logAppError failed:", logError);
+      }
 
-      setErrorMessage("Der Testzugang konnte gerade nicht geladen werden.");
+      clearCurrentTesterAccountId();
       setStatus("unregistered");
     }
   }
@@ -110,14 +123,18 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
 
       setCurrentTesterAccountId(account.id);
 
-      await logUsageEvent({
-        accountId: account.id,
-        eventType: "tester_registered",
-        payload: {
-          firstName: trimmedFirstName,
-          lastName: trimmedLastName,
-        },
-      });
+      try {
+        await logUsageEvent({
+          accountId: account.id,
+          eventType: "tester_registered",
+          payload: {
+            firstName: trimmedFirstName,
+            lastName: trimmedLastName,
+          },
+        });
+      } catch (error) {
+        console.error("logUsageEvent failed:", error);
+      }
 
       if (account.status === "approved") {
         setStatus("approved");
@@ -127,13 +144,17 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
         setStatus("pending");
       }
     } catch (error: any) {
+      console.error("handleRegisterOrLogin failed:", error);
+
       try {
         await logAppError({
           accountId: getCurrentTesterAccountId() || undefined,
           errorMessage: error?.message || "Failed to register tester",
           context: { location: "TesterAccessGate.handleRegisterOrLogin" },
         });
-      } catch {}
+      } catch (logError) {
+        console.error("logAppError failed:", logError);
+      }
 
       setErrorMessage("Anmeldung oder Registrierung konnte nicht gespeichert werden.");
     } finally {
