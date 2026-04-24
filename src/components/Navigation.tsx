@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, History, Database } from "lucide-react";
+import { LayoutDashboard, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "History", href: "/history", icon: History },
-  { label: "Sources", href: "/admin", icon: Database },
+  { label: "Archive", href: "/history", icon: History },
 ];
 
 export function Navigation() {
@@ -26,7 +25,7 @@ export function Navigation() {
               N
             </div>
             <span className="truncate text-base sm:text-xl font-headline font-bold text-white tracking-tight">
-              BriefingDesk
+              News Briefing
             </span>
           </Link>
 

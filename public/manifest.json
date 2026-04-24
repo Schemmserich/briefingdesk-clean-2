@@ -1,6 +1,6 @@
 {
-  "name": "BriefingDesk",
-  "short_name": "BriefingDesk",
+  "name": "News Briefing",
+  "short_name": "News Briefing",
   "description": "Professionelle News- und Markt-Briefings als App.",
   "start_url": "/",
   "display": "standalone",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { i18n } from "@/lib/i18n";
 import { Language, BriefingRequest, BriefingType, BriefingResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -11,16 +11,17 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BriefingDisplay } from "./BriefingDisplay";
 import { generateCuratedBriefingAction } from "@/app/actions/briefing";
+import { saveAutoBriefing, saveManualBriefing } from "@/lib/briefingArchive";
 import {
   Loader2,
   Zap,
-  Save,
   Calendar,
   Globe,
   Layers,
   Settings2,
   Newspaper,
   SlidersHorizontal,
+  Archive,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -173,20 +174,20 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
 
           <div className="flex flex-wrap gap-2 max-w-full">
             {regions.map((reg) => (
-  <button
-    key={reg}
-    type="button"
-    onClick={() => toggleRegion(reg)}
-    className={cn(
-      "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
-      params.regions.includes(reg)
-        ? "bg-accent border-accent text-white"
-        : "border-white/10 text-muted-foreground hover:border-white/20"
-    )}
-  >
-    {regionLabels[lang][reg] ?? reg}
-  </button>
-))}
+              <button
+                key={reg}
+                type="button"
+                onClick={() => toggleRegion(reg)}
+                className={cn(
+                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
+                  params.regions.includes(reg)
+                    ? "bg-accent border-accent text-white"
+                    : "border-white/10 text-muted-foreground hover:border-white/20"
+                )}
+              >
+                {regionLabels[lang][reg] ?? reg}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -196,21 +197,21 @@ function FilterPanel({ lang, setLang, params, setParams }: FilterPanelProps) {
           </Label>
 
           <div className="flex flex-wrap gap-2 max-w-full">
-           {categories.map((cat) => (
-  <button
-    key={cat}
-    type="button"
-    onClick={() => toggleCategory(cat)}
-    className={cn(
-      "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
-      params.categories.includes(cat)
-        ? "bg-secondary border-primary/40 text-white"
-        : "border-white/10 text-muted-foreground hover:border-white/20"
-    )}
-  >
-    {categoryLabels[lang][cat] ?? cat}
-  </button>
-))}
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => toggleCategory(cat)}
+                className={cn(
+                  "px-3 py-2 rounded-full text-xs transition-all border min-h-10 max-w-full",
+                  params.categories.includes(cat)
+                    ? "bg-secondary border-primary/40 text-white"
+                    : "border-white/10 text-muted-foreground hover:border-white/20"
+                )}
+              >
+                {categoryLabels[lang][cat] ?? cat}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -310,6 +311,10 @@ export function BriefingDashboard() {
 
   const t = i18n[lang];
 
+  useEffect(() => {
+    document.title = "News Briefing";
+  }, []);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     count += params.categories.length;
@@ -331,17 +336,27 @@ export function BriefingDashboard() {
       if (!response?.success) {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: response?.error || "Failed to generate briefing.",
+          title: lang === "de" ? "Fehler" : "Error",
+          description: response?.error || (lang === "de" ? "Briefing konnte nicht erstellt werden." : "Failed to generate briefing."),
         });
         return;
       }
 
-      setResult(response.data as BriefingResult);
+      const briefingData = response.data as BriefingResult;
+      setResult(briefingData);
+
+      saveAutoBriefing({
+        language: lang,
+        params,
+        briefing: briefingData,
+      });
 
       toast({
-        title: "Success",
-        description: "Briefing generated successfully.",
+        title: lang === "de" ? "Erfolgreich" : "Success",
+        description:
+          lang === "de"
+            ? "Briefing erstellt und automatisch im Archiv gespeichert."
+            : "Briefing generated and automatically saved to archive.",
       });
     } catch (error: any) {
       console.error(error);
@@ -354,17 +369,24 @@ export function BriefingDashboard() {
         error.message?.includes("429") ||
         error.message?.includes("quota");
 
-      let errorTitle = "Error";
-      let errorDesc = "Failed to generate briefing.";
+      let errorTitle = lang === "de" ? "Fehler" : "Error";
+      let errorDesc =
+        lang === "de"
+          ? "Briefing konnte nicht erstellt werden."
+          : "Failed to generate briefing.";
 
       if (isUnavailable) {
-        errorTitle = "AI High Demand";
+        errorTitle = lang === "de" ? "KI ausgelastet" : "AI High Demand";
         errorDesc =
-          "The AI is currently under high load. Please wait a few seconds and try again.";
+          lang === "de"
+            ? "Die KI ist derzeit stark ausgelastet. Bitte versuche es in wenigen Sekunden erneut."
+            : "The AI is currently under high load. Please wait a few seconds and try again.";
       } else if (isQuotaExceeded) {
-        errorTitle = "Quota Exceeded";
+        errorTitle = lang === "de" ? "Limit erreicht" : "Quota Exceeded";
         errorDesc =
-          "The API rate limit has been reached. Please try again in about a minute.";
+          lang === "de"
+            ? "Das API-Limit wurde erreicht. Bitte versuche es in etwa einer Minute erneut."
+            : "The API rate limit has been reached. Please try again in about a minute.";
       } else {
         errorDesc = error.message || errorDesc;
       }
@@ -379,12 +401,45 @@ export function BriefingDashboard() {
     }
   };
 
+  const handleSaveCurrentBriefing = () => {
+    if (!result) return;
+
+    const suggestedName =
+      params.briefingType && result.mainTitle
+        ? `${params.briefingType}: ${result.mainTitle}`
+        : result.mainTitle || (lang === "de" ? "Gespeichertes Briefing" : "Saved Briefing");
+
+    const enteredName = window.prompt(
+      lang === "de" ? "Bitte Namen für das Briefing eingeben:" : "Please enter a name for the briefing:",
+      suggestedName
+    );
+
+    if (!enteredName || !enteredName.trim()) {
+      return;
+    }
+
+    saveManualBriefing({
+      language: lang,
+      params,
+      briefing: result,
+      name: enteredName.trim(),
+    });
+
+    toast({
+      title: lang === "de" ? "Gespeichert" : "Saved",
+      description:
+        lang === "de"
+          ? "Das Briefing wurde im Archiv gespeichert."
+          : "The briefing has been saved to the archive.",
+    });
+  };
+
   return (
     <>
       <div className="space-y-4 sm:space-y-6">
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-headline font-bold text-white tracking-tight">
-            {lang === "de" ? "Briefing-Dashboard" : "Intelligence Dashboard"}
+            News Briefing
           </h1>
           <p className="text-sm sm:text-base lg:text-lg text-muted-foreground max-w-3xl leading-6 sm:leading-7">
             {lang === "de"
@@ -417,14 +472,16 @@ export function BriefingDashboard() {
                 {t.generateBriefing}
               </Button>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
-                  <Save className="w-4 h-4 mr-1.5" /> {t.savePreset}
+              {result && (
+                <Button
+                  variant="outline"
+                  className="border-white/10 hover:bg-white/5 h-10"
+                  onClick={handleSaveCurrentBriefing}
+                >
+                  <Archive className="w-4 h-4 mr-2" />
+                  {lang === "de" ? "Briefing speichern" : "Save briefing"}
                 </Button>
-                <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs h-10">
-                  <Zap className="w-4 h-4 mr-1.5 text-accent" /> {t.useMorningPreset}
-                </Button>
-              </div>
+              )}
             </div>
           </div>
 
@@ -444,13 +501,24 @@ export function BriefingDashboard() {
                   />
                 </div>
 
-                <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background">
+                <div className="sticky bottom-0 left-0 right-0 pt-4 bg-background space-y-3">
+                  {result && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-white/10 hover:bg-white/5 h-11"
+                      onClick={handleSaveCurrentBriefing}
+                    >
+                      <Archive className="w-4 h-4 mr-2" />
+                      {lang === "de" ? "Briefing speichern" : "Save briefing"}
+                    </Button>
+                  )}
+
                   <Button
                     size="lg"
                     className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12"
                     onClick={() => setMobileFiltersOpen(false)}
                   >
-                    Einstellungen übernehmen
+                    {lang === "de" ? "Einstellungen übernehmen" : "Apply settings"}
                   </Button>
                 </div>
               </SheetContent>
@@ -469,7 +537,20 @@ export function BriefingDashboard() {
                 </p>
               </div>
             ) : result ? (
-              <BriefingDisplay briefing={result} language={lang} />
+              <div className="space-y-3">
+                <div className="lg:hidden">
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/10 hover:bg-white/5 h-10"
+                    onClick={handleSaveCurrentBriefing}
+                  >
+                    <Archive className="w-4 h-4 mr-2" />
+                    {lang === "de" ? "Briefing speichern" : "Save briefing"}
+                  </Button>
+                </div>
+
+                <BriefingDisplay briefing={result} language={lang} />
+              </div>
             ) : (
               <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
                 <div className="w-14 h-14 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
@@ -500,7 +581,7 @@ export function BriefingDashboard() {
               onClick={() => setMobileFiltersOpen(true)}
             >
               <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Filter
+              {lang === "de" ? "Filter" : "Filters"}
             </Button>
 
             <Button
