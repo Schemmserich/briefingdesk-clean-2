@@ -12,7 +12,16 @@ import {
 import { exportArchivedBriefingToPdf } from "@/lib/exportBriefingPdf";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Archive, Pencil, Trash2, Eye, FileText, Download } from "lucide-react";
+import {
+  Archive,
+  Pencil,
+  Trash2,
+  Eye,
+  FileText,
+  Download,
+  Check,
+  X,
+} from "lucide-react";
 
 function formatArchiveDate(value: string, language: "de" | "en") {
   return new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-US", {
@@ -64,6 +73,9 @@ function buildArchiveMeta(entry: ArchivedBriefing) {
 export default function HistoryPage() {
   const [entries, setEntries] = useState<ArchivedBriefing[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   function refreshEntries() {
     const nextEntries = listArchivedBriefings();
@@ -90,32 +102,45 @@ export default function HistoryPage() {
     [entries, selectedId]
   );
 
-  const handleRename = (entry: ArchivedBriefing) => {
-    const nextName = window.prompt(
-      entry.language === "de" ? "Bitte neuen Namen eingeben:" : "Please enter a new name:",
-      entry.name
-    );
+  function startRename(entry: ArchivedBriefing) {
+    setDeleteConfirmId(null);
+    setEditingId(entry.id);
+    setEditingValue(entry.name);
+  }
 
-    if (!nextName || !nextName.trim()) return;
+  function cancelRename() {
+    setEditingId(null);
+    setEditingValue("");
+  }
 
-    renameArchivedBriefing(entry.id, nextName.trim());
+  function confirmRename(entry: ArchivedBriefing) {
+    const trimmed = editingValue.trim();
+    if (!trimmed) return;
+
+    renameArchivedBriefing(entry.id, trimmed);
+    setEditingId(null);
+    setEditingValue("");
     refreshEntries();
-  };
+  }
 
-  const handleDelete = (entry: ArchivedBriefing) => {
-    const confirmed = window.confirm(
-      entry.language === "de"
-        ? `"${entry.name}" wirklich löschen?`
-        : `Delete "${entry.name}"?`
-    );
+  function startDelete(entry: ArchivedBriefing) {
+    setEditingId(null);
+    setEditingValue("");
+    setDeleteConfirmId(entry.id);
+  }
 
-    if (!confirmed) return;
+  function cancelDelete() {
+    setDeleteConfirmId(null);
+  }
 
+  function confirmDelete(entry: ArchivedBriefing) {
     const wasSelected = selectedId === entry.id;
 
     deleteArchivedBriefing(entry.id);
+
     const nextEntries = listArchivedBriefings();
     setEntries(nextEntries);
+    setDeleteConfirmId(null);
 
     if (!nextEntries.length) {
       setSelectedId(null);
@@ -125,7 +150,7 @@ export default function HistoryPage() {
     if (wasSelected) {
       setSelectedId(null);
     }
-  };
+  }
 
   const handlePdfExport = (entry: ArchivedBriefing) => {
     exportArchivedBriefingToPdf(entry);
@@ -164,6 +189,8 @@ export default function HistoryPage() {
               <div className="lg:col-span-4 space-y-3">
                 {entries.map((entry) => {
                   const isSelected = selectedId === entry.id;
+                  const isEditing = editingId === entry.id;
+                  const isDeleting = deleteConfirmId === entry.id;
 
                   return (
                     <Card
@@ -171,56 +198,122 @@ export default function HistoryPage() {
                       className={`briefing-card transition ${isSelected ? "border-primary/50" : ""}`}
                     >
                       <CardContent className="p-4 space-y-3">
-                        <button
-                          type="button"
-                          className="w-full text-left space-y-1"
-                          onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
-                        >
-                          <div className="text-sm sm:text-base font-semibold text-white leading-snug break-words">
-                            {deriveArchiveHeadline(entry)}
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <input
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                              placeholder="Name"
+                              autoFocus
+                            />
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                className="h-9"
+                                onClick={() => confirmRename(entry)}
+                              >
+                                <Check className="w-4 h-4 mr-2" />
+                                Save
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-9 border-white/10 hover:bg-white/5"
+                                onClick={cancelRename}
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {buildArchiveMeta(entry)}
+                        ) : isDeleting ? (
+                          <div className="space-y-3">
+                            <div className="text-sm text-white font-medium">
+                              {entry.language === "de"
+                                ? "Dieses Briefing wirklich löschen?"
+                                : "Delete this briefing?"}
+                            </div>
+                            <div className="text-xs text-muted-foreground break-words">
+                              {deriveArchiveHeadline(entry)}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                className="h-9"
+                                onClick={() => confirmDelete(entry)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-9 border-white/10 hover:bg-white/5"
+                                onClick={cancelDelete}
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </div>
                           </div>
-                        </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="w-full text-left space-y-1"
+                              onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
+                            >
+                              <div className="text-sm sm:text-base font-semibold text-white leading-snug break-words">
+                                {deriveArchiveHeadline(entry)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {buildArchiveMeta(entry)}
+                              </div>
+                            </button>
 
-                        <div className="grid grid-cols-4 gap-2">
-                          <Button
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            className="h-9 px-2"
-                            onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
-                          >
-                            {isSelected ? <FileText className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </Button>
+                            <div className="grid grid-cols-4 gap-2">
+                              <Button
+                                type="button"
+                                variant={isSelected ? "default" : "outline"}
+                                className="h-9 px-2"
+                                onClick={() => setSelectedId((prev) => (prev === entry.id ? null : entry.id))}
+                              >
+                                {isSelected ? <FileText className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </Button>
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="border-white/10 hover:bg-white/5 h-9 px-2"
-                            onClick={() => handlePdfExport(entry)}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="border-white/10 hover:bg-white/5 h-9 px-2"
+                                onClick={() => handlePdfExport(entry)}
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="border-white/10 hover:bg-white/5 h-9 px-2"
-                            onClick={() => handleRename(entry)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="border-white/10 hover:bg-white/5 h-9 px-2"
+                                onClick={() => startRename(entry)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="border-white/10 hover:bg-white/5 h-9 px-2"
-                            onClick={() => handleDelete(entry)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="border-white/10 hover:bg-white/5 h-9 px-2"
+                                onClick={() => startDelete(entry)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   );
