@@ -153,11 +153,15 @@ export default function AdminPage() {
       const result = await response.json();
 
       if (result?.authorized) {
-        setAuthorized(true);
-        await loadAllData();
-      } else {
-        setAuthorized(false);
-      }
+  setAuthorized(true);
+  await loadAllData();
+} else {
+  setAuthorized(false);
+
+  if (result?.isEligibleAdmin === false) {
+    setStatusMessage("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
+  }
+}
     } catch (error) {
       console.error(error);
       setAuthorized(false);
@@ -185,10 +189,14 @@ export default function AdminPage() {
 
       const result = await response.json();
 
-      if (!response.ok || !result?.success) {
-        setLoginError("Admin-Passcode ist nicht korrekt.");
-        return;
-      }
+     if (!response.ok || !result?.success) {
+  if (response.status === 403) {
+    setLoginError("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
+  } else {
+    setLoginError("Admin-Passcode ist nicht korrekt.");
+  }
+  return;
+}
 
       setPasscode("");
       await checkAdminSession();

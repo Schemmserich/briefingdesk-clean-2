@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { LayoutDashboard, History, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,8 +14,7 @@ type NavItem = {
 
 export function Navigation() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   useEffect(() => {
     async function checkAdminSession() {
@@ -25,9 +24,9 @@ export function Navigation() {
           cache: "no-store",
         });
         const result = await response.json();
-        setIsAdmin(!!result?.authorized);
+        setShowAdmin(!!result?.isEligibleAdmin);
       } catch {
-        setIsAdmin(false);
+        setShowAdmin(false);
       }
     }
 
@@ -39,7 +38,7 @@ export function Navigation() {
     { label: "Archiv", href: "/history", icon: History },
   ];
 
-  if (isAdmin) {
+  if (showAdmin) {
     navItems.push({ label: "Admin", href: "/admin", icon: Shield });
   }
 
@@ -47,11 +46,9 @@ export function Navigation() {
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70 overflow-x-hidden">
       <div className="mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-6">
         <div className="flex h-14 items-center justify-between gap-3 min-w-0">
-          <button
-            type="button"
-            onDoubleClick={() => router.push("/admin")}
-            className="min-w-0 shrink flex items-center gap-2 overflow-hidden text-left"
-            title="Doppelklick für Admin"
+          <Link
+            href="/"
+            className="min-w-0 shrink flex items-center gap-2 overflow-hidden"
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary font-bold">
               N
@@ -59,7 +56,7 @@ export function Navigation() {
             <span className="truncate text-base sm:text-xl font-headline font-bold text-white tracking-tight">
               News Briefing
             </span>
-          </button>
+          </Link>
 
           <nav className="min-w-0 max-w-full overflow-hidden">
             <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar max-w-full">

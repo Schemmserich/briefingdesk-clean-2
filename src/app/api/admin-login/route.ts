@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { supabase } from "@/lib/db/client";
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +19,41 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: "Invalid passcode." },
         { status: 401 }
+      );
+    }
+
+    const cookieStore = await cookies();
+    const deviceId = cookieStore.get("newsbriefing_device_id")?.value;
+
+    if (!deviceId) {
+      return NextResponse.json(
+        { success: false, error: "No device ID found." },
+        { status: 401 }
+      );
+    }
+
+    const { data: user, error } = await supabase
+      .from("test_users")
+      .select("*")
+      .eq("device_id", deviceId)
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: "Failed to verify admin user." },
+        { status: 500 }
+      );
+    }
+
+    const isAllowedAdmin =
+      user &&
+      String(user.first_name ?? "").trim().toLowerCase() === "florian" &&
+      String(user.last_name ?? "").trim().toLowerCase() === "schemm";
+
+    if (!isAllowedAdmin) {
+      return NextResponse.json(
+        { success: false, error: "This user is not allowed to access admin." },
+        { status: 403 }
       );
     }
 
