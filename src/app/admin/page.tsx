@@ -148,6 +148,10 @@ function getReadableErrorTitle(errorMessage: string) {
     return "KI derzeit ausgelastet";
   }
 
+  if (normalized.includes("delete failed")) {
+    return "Löschen fehlgeschlagen";
+  }
+
   return "Technischer Fehler";
 }
 
@@ -186,6 +190,10 @@ function getReadableErrorDescription(errorMessage: string) {
     return "Die KI oder der Dienst war zum Zeitpunkt der Anfrage vorübergehend überlastet.";
   }
 
+  if (normalized.includes("delete failed")) {
+    return "Der Nutzer oder zugehörige Protokolle konnten nicht vollständig gelöscht werden.";
+  }
+
   return "Es ist ein technischer Fehler aufgetreten. Der Originaltext steht unten zur genaueren Prüfung.";
 }
 
@@ -199,9 +207,9 @@ export default function AdminPage() {
   const [appErrors, setAppErrors] = useState<AppErrorRow[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-const [updatingDeviceId, setUpdatingDeviceId] = useState<string | null>(null);
-const [deleteConfirmDeviceId, setDeleteConfirmDeviceId] = useState<string | null>(null);
-const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const [updatingDeviceId, setUpdatingDeviceId] = useState<string | null>(null);
+  const [deleteConfirmDeviceId, setDeleteConfirmDeviceId] = useState<string | null>(null);
+  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
 
   async function loadAllData() {
     try {
@@ -331,55 +339,36 @@ const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
     }
   }
 
-function startDeleteUser(deviceId: string) {
-  setDeleteConfirmDeviceId(deviceId);
-  setStatusMessage("");
-}
-
-function cancelDeleteUser() {
-  setDeleteConfirmDeviceId(null);
-}
-
-async function confirmDeleteUser(user: TestUser) {
-  try {
-    setDeletingDeviceId(user.device_id);
+  function startDeleteUser(deviceId: string) {
+    setDeleteConfirmDeviceId(deviceId);
     setStatusMessage("");
-
-    await deleteTestUserCompletely(user.device_id);
-    setDeleteConfirmDeviceId(null);
-    await loadAllData();
-
-    setStatusMessage(
-      `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
-    );
-  } catch (error: any) {
-    console.error(error);
-    setStatusMessage(
-      `Der Nutzer konnte nicht gelöscht werden. Technischer Grund: ${error?.message || "Unbekannter Fehler"}`
-    );
-  } finally {
-    setDeletingDeviceId(null);
   }
-}  try {
-    setDeletingDeviceId(user.device_id);
-    setStatusMessage("");
 
-    await deleteTestUserCompletely(user.device_id);
+  function cancelDeleteUser() {
     setDeleteConfirmDeviceId(null);
-    await loadAllData();
-
-    setStatusMessage(
-      `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
-    );
-  } catch (error) {
-    console.error(error);
-    setStatusMessage("Der Nutzer konnte nicht gelöscht werden.");
-  } finally {
-    setDeletingDeviceId(null);
   }
-}
 
+  async function confirmDeleteUser(user: TestUser) {
+    try {
+      setDeletingDeviceId(user.device_id);
+      setStatusMessage("");
 
+      await deleteTestUserCompletely(user.device_id);
+      setDeleteConfirmDeviceId(null);
+      await loadAllData();
+
+      setStatusMessage(
+        `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
+      );
+    } catch (error: any) {
+      console.error(error);
+      setStatusMessage(
+        `Der Nutzer konnte nicht gelöscht werden. Technischer Grund: ${error?.message || "Unbekannter Fehler"}`
+      );
+    } finally {
+      setDeletingDeviceId(null);
+    }
+  }
 
   const stats = useMemo(() => {
     const approved = users.filter((u) => u.status === "approved").length;
@@ -622,74 +611,74 @@ async function confirmDeleteUser(user: TestUser) {
                           </div>
 
                           <div className="space-y-3">
-  <div className="flex gap-2 flex-wrap">
-    <Button
-      className="h-10"
-      disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "approved"}
-      onClick={() => handleStatusChange(user, "approved")}
-    >
-      {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
-    </Button>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                className="h-10"
+                                disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "approved"}
+                                onClick={() => handleStatusChange(user, "approved")}
+                              >
+                                {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
+                              </Button>
 
-    <Button
-      variant="outline"
-      className="h-10 border-white/10"
-      disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "pending"}
-      onClick={() => handleStatusChange(user, "pending")}
-    >
-      Freigabe ausstehend
-    </Button>
+                              <Button
+                                variant="outline"
+                                className="h-10 border-white/10"
+                                disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "pending"}
+                                onClick={() => handleStatusChange(user, "pending")}
+                              >
+                                Freigabe ausstehend
+                              </Button>
 
-    <Button
-      variant="outline"
-      className="h-10 border-white/10"
-      disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "blocked"}
-      onClick={() => handleStatusChange(user, "blocked")}
-    >
-      Sperren
-    </Button>
+                              <Button
+                                variant="outline"
+                                className="h-10 border-white/10"
+                                disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "blocked"}
+                                onClick={() => handleStatusChange(user, "blocked")}
+                              >
+                                Sperren
+                              </Button>
 
-    <Button
-      variant="outline"
-      className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
-      disabled={isUpdating || deletingDeviceId === user.device_id}
-      onClick={() => startDeleteUser(user.device_id)}
-    >
-      Löschen
-    </Button>
-  </div>
+                              <Button
+                                variant="outline"
+                                className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
+                                disabled={isUpdating || deletingDeviceId === user.device_id}
+                                onClick={() => startDeleteUser(user.device_id)}
+                              >
+                                Löschen
+                              </Button>
+                            </div>
 
-  {deleteConfirmDeviceId === user.device_id && (
-    <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 space-y-3">
-      <div className="text-sm text-white font-medium">
-        Soll {user.first_name} {user.last_name} wirklich vollständig gelöscht werden?
-      </div>
-      <div className="text-xs text-muted-foreground leading-5">
-        Dabei werden auch die zugehörigen Briefing-Logs und Fehlerprotokolle dieses Geräts entfernt.
-        Der Nutzer kann sich später erneut registrieren.
-      </div>
+                            {deleteConfirmDeviceId === user.device_id && (
+                              <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 space-y-3">
+                                <div className="text-sm text-white font-medium">
+                                  Soll {user.first_name} {user.last_name} wirklich vollständig gelöscht werden?
+                                </div>
+                                <div className="text-xs text-muted-foreground leading-5">
+                                  Dabei werden auch die zugehörigen Briefing-Logs und Fehlerprotokolle dieses Geräts entfernt.
+                                  Der Nutzer kann sich später erneut registrieren.
+                                </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          className="h-10 bg-red-600 hover:bg-red-700 text-white"
-          disabled={deletingDeviceId === user.device_id}
-          onClick={() => confirmDeleteUser(user)}
-        >
-          {deletingDeviceId === user.device_id ? "Wird gelöscht..." : "Endgültig löschen"}
-        </Button>
+                                <div className="flex gap-2 flex-wrap">
+                                  <Button
+                                    className="h-10 bg-red-600 hover:bg-red-700 text-white"
+                                    disabled={deletingDeviceId === user.device_id}
+                                    onClick={() => confirmDeleteUser(user)}
+                                  >
+                                    {deletingDeviceId === user.device_id ? "Wird gelöscht..." : "Endgültig löschen"}
+                                  </Button>
 
-        <Button
-          variant="outline"
-          className="h-10 border-white/10"
-          disabled={deletingDeviceId === user.device_id}
-          onClick={cancelDeleteUser}
-        >
-          Abbrechen
-        </Button>
-      </div>
-    </div>
-  )}
-</div>
+                                  <Button
+                                    variant="outline"
+                                    className="h-10 border-white/10"
+                                    disabled={deletingDeviceId === user.device_id}
+                                    onClick={cancelDeleteUser}
+                                  >
+                                    Abbrechen
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     );
@@ -811,51 +800,51 @@ async function confirmDeleteUser(user: TestUser) {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                  {appErrors.map((errorRow) => (
-  <Card key={errorRow.id} className="briefing-card border-red-400/15">
-    <CardContent className="p-4 space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="space-y-2">
-          <div className="text-base font-semibold text-white">
-            {errorRow.device_id
-              ? getUserNameByDeviceId(errorRow.device_id, users)
-              : "Unbekannter Tester"}
-          </div>
+                    {appErrors.map((errorRow) => (
+                      <Card key={errorRow.id} className="briefing-card border-red-400/15">
+                        <CardContent className="p-4 space-y-4">
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="space-y-2">
+                              <div className="text-base font-semibold text-white">
+                                {errorRow.device_id
+                                  ? getUserNameByDeviceId(errorRow.device_id, users)
+                                  : "Unbekannter Tester"}
+                              </div>
 
-          <div className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
-            {getReadableErrorTitle(errorRow.error_message)}
-          </div>
+                              <div className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
+                                {getReadableErrorTitle(errorRow.error_message)}
+                              </div>
 
-          <div className="text-sm text-white/90 leading-6">
-            {getReadableErrorDescription(errorRow.error_message)}
-          </div>
-        </div>
+                              <div className="text-sm text-white/90 leading-6">
+                                {getReadableErrorDescription(errorRow.error_message)}
+                              </div>
+                            </div>
 
-        <div className="text-sm text-muted-foreground">
-          {formatDate(errorRow.created_at)}
-        </div>
-      </div>
+                            <div className="text-sm text-muted-foreground">
+                              {formatDate(errorRow.created_at)}
+                            </div>
+                          </div>
 
-      <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          Technischer Originaltext
-        </div>
-        <div className="mt-2 text-red-300 break-words">
-          {errorRow.error_message}
-        </div>
-      </div>
+                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Technischer Originaltext
+                            </div>
+                            <div className="mt-2 text-red-300 break-words">
+                              {errorRow.error_message}
+                            </div>
+                          </div>
 
-      <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          Kontext
-        </div>
-        <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
-          {JSON.stringify(errorRow.context ?? {}, null, 2)}
-        </pre>
-      </div>
-    </CardContent>
-  </Card>
-))}
+                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Kontext
+                            </div>
+                            <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
+                              {JSON.stringify(errorRow.context ?? {}, null, 2)}
+                            </pre>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </section>

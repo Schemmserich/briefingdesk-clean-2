@@ -205,9 +205,7 @@ export async function updateTestUserStatus(input: {
 
   if (input.status === "approved") {
     updatePayload.approved_at = new Date().toISOString();
-  }
-
-  if (input.status !== "approved") {
+  } else {
     updatePayload.approved_at = null;
   }
 
@@ -279,24 +277,4 @@ export async function deleteTestUserCompletely(deviceId: string) {
   }
 
   return true;
-}  const { error: usageError } = await supabase
-    .from("usage_events")
-    .delete()
-    .eq("device_id", deviceId);
-
-  if (usageError) throw usageError;
-
-  const { error: appErrorsError } = await supabase
-    .from("app_errors")
-    .delete()
-    .eq("device_id", deviceId);
-
-  if (appErrorsError) throw appErrorsError;
-
-  const { error: userError } = await supabase
-    .from("test_users")
-    .delete()
-    .eq("device_id", deviceId);
-
-  if (userError) throw userError;
 }
