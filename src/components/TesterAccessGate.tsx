@@ -7,7 +7,6 @@ import {
   getCurrentTesterAccountId,
   getOrCreateDeviceId,
   setCurrentTesterAccountId,
-  sha256,
 } from "@/lib/testerIdentity";
 import {
   getTesterAccountById,
@@ -27,7 +26,6 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
   const [status, setStatus] = useState<TesterStatus>("loading");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -93,10 +91,9 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
   async function handleRegisterOrLogin() {
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
-    const trimmedPin = pin.trim();
 
-    if (!trimmedFirstName || !trimmedLastName || !trimmedPin) {
-      setErrorMessage("Bitte Vorname, Nachname und PIN vollständig eingeben.");
+    if (!trimmedFirstName || !trimmedLastName) {
+      setErrorMessage("Bitte Vorname und Nachname vollständig eingeben.");
       return;
     }
 
@@ -105,12 +102,10 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
       setErrorMessage("");
 
       getOrCreateDeviceId();
-      const pinHash = await sha256(trimmedPin);
 
       const account = await registerOrLoginTesterAccount({
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
-        pinHash,
       });
 
       setCurrentTesterAccountId(account.id);
@@ -167,7 +162,7 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
             <div className="space-y-2 text-center">
               <h1 className="text-2xl font-bold text-white">Anmelden oder registrieren</h1>
               <p className="text-sm text-muted-foreground leading-6">
-                Bitte gib Vorname, Nachname und PIN ein. Mit denselben Daten kannst du dich auf mehreren Geräten als derselbe Nutzer anmelden.
+                Bitte gib Vorname und Nachname ein. Mit denselben Daten kannst du dich auf mehreren Geräten als derselbe Nutzer anmelden.
               </p>
             </div>
 
@@ -189,17 +184,6 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
                   onChange={(e) => setLastName(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-white outline-none focus:border-primary"
                   placeholder="Nachname"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm text-white">PIN</label>
-                <input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-white outline-none focus:border-primary"
-                  placeholder="PIN"
                 />
               </div>
 

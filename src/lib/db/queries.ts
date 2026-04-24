@@ -89,17 +89,12 @@ export async function getTesterAccountById(accountId: string) {
   return data;
 }
 
-export async function getTesterAccountByCredentials(input: {
-  firstName: string;
-  lastName: string;
-  pinHash: string;
-}) {
+export async function getTesterAccountByName(firstName: string, lastName: string) {
   const { data, error } = await supabase
     .from("tester_accounts")
     .select("*")
-    .ilike("first_name", input.firstName.trim())
-    .ilike("last_name", input.lastName.trim())
-    .eq("pin_hash", input.pinHash)
+    .ilike("first_name", firstName.trim())
+    .ilike("last_name", lastName.trim())
     .maybeSingle();
 
   if (error) throw error;
@@ -109,16 +104,11 @@ export async function getTesterAccountByCredentials(input: {
 export async function registerOrLoginTesterAccount(input: {
   firstName: string;
   lastName: string;
-  pinHash: string;
 }) {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
 
-  const existing = await getTesterAccountByCredentials({
-    firstName,
-    lastName,
-    pinHash: input.pinHash,
-  });
+  const existing = await getTesterAccountByName(firstName, lastName);
 
   if (existing) {
     const { data, error } = await supabase
@@ -139,7 +129,7 @@ export async function registerOrLoginTesterAccount(input: {
     .insert({
       first_name: firstName,
       last_name: lastName,
-      pin_hash: input.pinHash,
+      pin_hash: "__NO_PIN__",
       status: "pending",
       is_admin: firstName.toLowerCase() === "florian" && lastName.toLowerCase() === "schemm",
       last_seen_at: new Date().toISOString(),
@@ -258,21 +248,27 @@ export async function deleteTesterAccountCompletely(accountId: string) {
     .delete()
     .eq("account_id", accountId);
 
-  if (usageError) throw new Error(`usage_events delete failed: ${usageError.message}`);
+  if (usageError) {
+    throw new Error(`usage_events delete failed: ${usageError.message}`);
+  }
 
   const { error: appErrorsError } = await supabase
     .from("app_errors")
     .delete()
     .eq("account_id", accountId);
 
-  if (appErrorsError) throw new Error(`app_errors delete failed: ${appErrorsError.message}`);
+  if (appErrorsError) {
+    throw new Error(`app_errors delete failed: ${appErrorsError.message}`);
+  }
 
   const { error: accountError } = await supabase
     .from("tester_accounts")
     .delete()
     .eq("id", accountId);
 
-  if (accountError) throw new Error(`tester_accounts delete failed: ${accountError.message}`);
+  if (accountError) {
+    throw new Error(`tester_accounts delete failed: ${accountError.message}`);
+  }
 
   return true;
 }
