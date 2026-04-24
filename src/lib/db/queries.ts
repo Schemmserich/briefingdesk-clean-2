@@ -54,14 +54,10 @@ export async function getFilteredArticles(input: {
   }
 
   const { data, error } = await query;
-
   if (error) throw error;
 
-  const filtered = (data ?? [])
-    .filter((row: any) => {
-      if (!row.sources) return true;
-      return row.sources.is_active !== false;
-    })
+  return (data ?? [])
+    .filter((row: any) => !row.sources || row.sources.is_active !== false)
     .map((row: any) => ({
       id: row.id,
       title: row.title,
@@ -78,59 +74,59 @@ export async function getFilteredArticles(input: {
     .sort((a: any, b: any) => {
       const trustDiff = (b.trustScore ?? 0) - (a.trustScore ?? 0);
       if (trustDiff !== 0) return trustDiff;
-
-      return (
-        new Date(b.publicationDate).getTime() -
-        new Date(a.publicationDate).getTime()
-      );
+      return new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime();
     });
-
-  return filtered;
 }
 
-export async function getTestUserByDeviceId(deviceId: string) {
+export async function getTesterAccountById(accountId: string) {
   const { data, error } = await supabase
-    .from("test_users")
+    .from("tester_accounts")
     .select("*")
-    .eq("device_id", deviceId)
+    .eq("id", accountId)
     .maybeSingle();
 
   if (error) throw error;
   return data;
 }
 
-export async function getAdminEligibleUserByName(firstName: string, lastName: string) {
-  const { data, error } = await supabase
-    .from("test_users")
-    .select("*")
-    .ilike("first_name", firstName.trim())
-    .ilike("last_name", lastName.trim())
-    .eq("is_admin", true)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function registerTestUser(input: {
-  deviceId: string;
+export async function getTesterAccountByCredentials(input: {
   firstName: string;
   lastName: string;
+  pinHash: string;
+}) {
+  const { data, error } = await supabase
+    .from("tester_accounts")
+    .select("*")
+    .ilike("first_name", input.firstName.trim())
+    .ilike("last_name", input.lastName.trim())
+    .eq("pin_hash", input.pinHash)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function registerOrLoginTesterAccount(input: {
+  firstName: string;
+  lastName: string;
+  pinHash: string;
 }) {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
 
-  const existingUser = await getTestUserByDeviceId(input.deviceId);
+  const existing = await getTesterAccountByCredentials({
+    firstName,
+    lastName,
+    pinHash: input.pinHash,
+  });
 
-  if (existingUser) {
+  if (existing) {
     const { data, error } = await supabase
-      .from("test_users")
+      .from("tester_accounts")
       .update({
-        first_name: firstName,
-        last_name: lastName,
         last_seen_at: new Date().toISOString(),
       })
-      .eq("device_id", input.deviceId)
+      .eq("id", existing.id)
       .select("*")
       .single();
 
@@ -139,12 +135,13 @@ export async function registerTestUser(input: {
   }
 
   const { data, error } = await supabase
-    .from("test_users")
+    .from("tester_accounts")
     .insert({
-      device_id: input.deviceId,
       first_name: firstName,
       last_name: lastName,
+      pin_hash: input.pinHash,
       status: "pending",
+      is_admin: firstName.toLowerCase() === "florian" && lastName.toLowerCase() === "schemm",
       last_seen_at: new Date().toISOString(),
     })
     .select("*")
@@ -154,26 +151,26 @@ export async function registerTestUser(input: {
   return data;
 }
 
-export async function touchTestUserLastSeen(deviceId: string) {
+export async function touchTesterAccountLastSeen(accountId: string) {
   const { error } = await supabase
-    .from("test_users")
+    .from("tester_accounts")
     .update({
       last_seen_at: new Date().toISOString(),
     })
-    .eq("device_id", deviceId);
+    .eq("id", accountId);
 
   if (error) throw error;
 }
 
 export async function logUsageEvent(input: {
-  deviceId: string;
+  accountId: string;
   eventType: string;
   payload?: Record<string, unknown>;
 }) {
   const { error } = await supabase
     .from("usage_events")
     .insert({
-      device_id: input.deviceId,
+      account_id: input.accountId,
       event_type: input.eventType,
       payload: input.payload ?? {},
     });
@@ -182,14 +179,14 @@ export async function logUsageEvent(input: {
 }
 
 export async function logAppError(input: {
-  deviceId?: string;
+  accountId?: string;
   errorMessage: string;
   context?: Record<string, unknown>;
 }) {
   const { error } = await supabase
     .from("app_errors")
     .insert({
-      device_id: input.deviceId ?? null,
+      account_id: input.accountId ?? null,
       error_message: input.errorMessage,
       context: input.context ?? {},
     });
@@ -197,9 +194,9 @@ export async function logAppError(input: {
   if (error) throw error;
 }
 
-export async function getAllTestUsers() {
+export async function getAllTesterAccounts() {
   const { data, error } = await supabase
-    .from("test_users")
+    .from("tester_accounts")
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -207,8 +204,8 @@ export async function getAllTestUsers() {
   return data ?? [];
 }
 
-export async function updateTestUserStatus(input: {
-  deviceId: string;
+export async function updateTesterAccountStatus(input: {
+  accountId: string;
   status: "pending" | "approved" | "blocked";
 }) {
   const updatePayload: Record<string, unknown> = {
@@ -223,9 +220,9 @@ export async function updateTestUserStatus(input: {
   }
 
   const { data, error } = await supabase
-    .from("test_users")
+    .from("tester_accounts")
     .update(updatePayload)
-    .eq("device_id", input.deviceId)
+    .eq("id", input.accountId)
     .select("*")
     .single();
 
@@ -255,39 +252,27 @@ export async function getAppErrors(limit = 30) {
   return data ?? [];
 }
 
-export async function deleteTestUserCompletely(deviceId: string) {
+export async function deleteTesterAccountCompletely(accountId: string) {
   const { error: usageError } = await supabase
     .from("usage_events")
     .delete()
-    .eq("device_id", deviceId);
+    .eq("account_id", accountId);
 
-  if (usageError) {
-    throw new Error(`usage_events delete failed: ${usageError.message}`);
-  }
+  if (usageError) throw new Error(`usage_events delete failed: ${usageError.message}`);
 
   const { error: appErrorsError } = await supabase
     .from("app_errors")
     .delete()
-    .eq("device_id", deviceId);
+    .eq("account_id", accountId);
 
-  if (appErrorsError) {
-    throw new Error(`app_errors delete failed: ${appErrorsError.message}`);
-  }
+  if (appErrorsError) throw new Error(`app_errors delete failed: ${appErrorsError.message}`);
 
-  const { error: userError } = await supabase
-    .from("test_users")
+  const { error: accountError } = await supabase
+    .from("tester_accounts")
     .delete()
-    .eq("device_id", deviceId);
+    .eq("id", accountId);
 
-  if (userError) {
-    throw new Error(`test_users delete failed: ${userError.message}`);
-  }
-
-  const stillExisting = await getTestUserByDeviceId(deviceId);
-
-  if (stillExisting) {
-    throw new Error("test_users delete failed: user still exists after delete");
-  }
+  if (accountError) throw new Error(`tester_accounts delete failed: ${accountError.message}`);
 
   return true;
 }

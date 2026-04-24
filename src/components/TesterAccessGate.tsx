@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getOrCreateDeviceId } from "@/lib/testerDevice";
 import {
-  getTestUserByDeviceId,
+  clearCurrentTesterAccountId,
+  getCurrentTesterAccountId,
+  getOrCreateDeviceId,
+  setCurrentTesterAccountId,
+  sha256,
+} from "@/lib/testerIdentity";
+import {
+  getTesterAccountById,
   logAppError,
   logUsageEvent,
-  registerTestUser,
-  touchTestUserLastSeen,
+  registerOrLoginTesterAccount,
+  touchTesterAccountLastSeen,
 } from "@/lib/db/queries";
 
 type TesterAccessGateProps = {
@@ -21,37 +27,46 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
   const [status, setStatus] = useState<TesterStatus>("loading");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   async function loadTesterState() {
     try {
       setErrorMessage("");
-      const deviceId = getOrCreateDeviceId();
+      getOrCreateDeviceId();
 
-      const existingUser = await getTestUserByDeviceId(deviceId);
+      const accountId = getCurrentTesterAccountId();
 
-      if (!existingUser) {
+      if (!accountId) {
         setStatus("unregistered");
         return;
       }
 
-      await touchTestUserLastSeen(deviceId);
+      const existingAccount = await getTesterAccountById(accountId);
+
+      if (!existingAccount) {
+        clearCurrentTesterAccountId();
+        setStatus("unregistered");
+        return;
+      }
+
+      await touchTesterAccountLastSeen(accountId);
 
       await logUsageEvent({
-        deviceId,
+        accountId,
         eventType: "app_opened",
         payload: {
-          status: existingUser.status,
+          status: existingAccount.status,
         },
       });
 
-      if (existingUser.status === "approved") {
+      if (existingAccount.status === "approved") {
         setStatus("approved");
         return;
       }
 
-      if (existingUser.status === "blocked") {
+      if (existingAccount.status === "blocked") {
         setStatus("blocked");
         return;
       }
@@ -60,15 +75,13 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
     } catch (error: any) {
       try {
         await logAppError({
-          deviceId: typeof window !== "undefined" ? getOrCreateDeviceId() : undefined,
+          accountId: getCurrentTesterAccountId() || undefined,
           errorMessage: error?.message || "Failed to load tester state",
-          context: {
-            location: "TesterAccessGate.loadTesterState",
-          },
+          context: { location: "TesterAccessGate.loadTesterState" },
         });
       } catch {}
 
-      setErrorMessage("Die Testfreigabe konnte gerade nicht geladen werden.");
+      setErrorMessage("Der Testzugang konnte gerade nicht geladen werden.");
       setStatus("unregistered");
     }
   }
@@ -77,12 +90,13 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
     loadTesterState();
   }, []);
 
-  async function handleRegister() {
+  async function handleRegisterOrLogin() {
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
+    const trimmedPin = pin.trim();
 
-    if (!trimmedFirstName || !trimmedLastName) {
-      setErrorMessage("Bitte Vorname und Nachname vollständig eingeben.");
+    if (!trimmedFirstName || !trimmedLastName || !trimmedPin) {
+      setErrorMessage("Bitte Vorname, Nachname und PIN vollständig eingeben.");
       return;
     }
 
@@ -90,16 +104,19 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
       setSubmitting(true);
       setErrorMessage("");
 
-      const deviceId = getOrCreateDeviceId();
+      getOrCreateDeviceId();
+      const pinHash = await sha256(trimmedPin);
 
-      await registerTestUser({
-        deviceId,
+      const account = await registerOrLoginTesterAccount({
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
+        pinHash,
       });
 
+      setCurrentTesterAccountId(account.id);
+
       await logUsageEvent({
-        deviceId,
+        accountId: account.id,
         eventType: "tester_registered",
         payload: {
           firstName: trimmedFirstName,
@@ -107,19 +124,23 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
         },
       });
 
-      setStatus("pending");
+      if (account.status === "approved") {
+        setStatus("approved");
+      } else if (account.status === "blocked") {
+        setStatus("blocked");
+      } else {
+        setStatus("pending");
+      }
     } catch (error: any) {
       try {
         await logAppError({
-          deviceId: typeof window !== "undefined" ? getOrCreateDeviceId() : undefined,
+          accountId: getCurrentTesterAccountId() || undefined,
           errorMessage: error?.message || "Failed to register tester",
-          context: {
-            location: "TesterAccessGate.handleRegister",
-          },
+          context: { location: "TesterAccessGate.handleRegisterOrLogin" },
         });
       } catch {}
 
-      setErrorMessage("Die Registrierung konnte gerade nicht gespeichert werden.");
+      setErrorMessage("Anmeldung oder Registrierung konnte nicht gespeichert werden.");
     } finally {
       setSubmitting(false);
     }
@@ -131,9 +152,7 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center space-y-3">
             <div className="text-xl font-semibold text-white">News Briefing</div>
-            <div className="text-sm text-muted-foreground">
-              Testzugang wird geprüft...
-            </div>
+            <div className="text-sm text-muted-foreground">Zugang wird geprüft...</div>
           </div>
         </div>
       </main>
@@ -146,9 +165,9 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 sm:p-8 space-y-5">
             <div className="space-y-2 text-center">
-              <h1 className="text-2xl font-bold text-white">Testzugang anfragen</h1>
+              <h1 className="text-2xl font-bold text-white">Anmelden oder registrieren</h1>
               <p className="text-sm text-muted-foreground leading-6">
-                Bitte registriere dich mit Vorname und Nachname. Danach wird dein Zugang manuell freigegeben.
+                Bitte gib Vorname, Nachname und PIN ein. Mit denselben Daten kannst du dich auf mehreren Geräten als derselbe Nutzer anmelden.
               </p>
             </div>
 
@@ -173,6 +192,17 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm text-white">PIN</label>
+                <input
+                  type="password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-white outline-none focus:border-primary"
+                  placeholder="PIN"
+                />
+              </div>
+
               {errorMessage && (
                 <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                   {errorMessage}
@@ -181,10 +211,10 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
 
               <Button
                 className="w-full h-12"
-                onClick={handleRegister}
+                onClick={handleRegisterOrLogin}
                 disabled={submitting}
               >
-                {submitting ? "Wird registriert..." : "Registrieren"}
+                {submitting ? "Wird verarbeitet..." : "Weiter"}
               </Button>
             </div>
           </div>
@@ -200,7 +230,7 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 sm:p-8 text-center space-y-4">
             <h1 className="text-2xl font-bold text-white">Freischaltung ausstehend</h1>
             <p className="text-sm text-muted-foreground leading-6">
-              Deine Registrierung wurde gespeichert. Der Zugang wird manuell freigegeben. Bitte versuche es später erneut.
+              Dein Zugang ist registriert, aber noch nicht freigegeben.
             </p>
             <Button variant="outline" className="border-white/10" onClick={loadTesterState}>
               Status erneut prüfen
@@ -218,7 +248,7 @@ export function TesterAccessGate({ children }: TesterAccessGateProps) {
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-card/40 p-6 sm:p-8 text-center space-y-4">
             <h1 className="text-2xl font-bold text-white">Zugang gesperrt</h1>
             <p className="text-sm text-muted-foreground leading-6">
-              Dieser Testzugang ist derzeit nicht freigeschaltet. Bitte wende dich direkt an den Administrator.
+              Dieser Zugang ist derzeit nicht freigeschaltet.
             </p>
           </div>
         </div>

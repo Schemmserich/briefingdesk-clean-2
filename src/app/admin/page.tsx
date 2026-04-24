@@ -6,19 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Navigation } from "@/components/Navigation";
 import {
-  deleteTestUserCompletely,
-  getAllTestUsers,
+  deleteTesterAccountCompletely,
+  getAllTesterAccounts,
   getAppErrors,
   getUsageEvents,
-  updateTestUserStatus,
+  updateTesterAccountStatus,
 } from "@/lib/db/queries";
 
-type TestUser = {
+type TesterAccount = {
   id: string;
-  device_id: string;
   first_name: string;
   last_name: string;
   status: "pending" | "approved" | "blocked";
+  is_admin: boolean;
   created_at: string;
   approved_at?: string | null;
   last_seen_at: string;
@@ -26,7 +26,7 @@ type TestUser = {
 
 type UsageEvent = {
   id: string;
-  device_id: string;
+  account_id?: string | null;
   event_type: string;
   payload: Record<string, any>;
   created_at: string;
@@ -34,18 +34,18 @@ type UsageEvent = {
 
 type AppErrorRow = {
   id: string;
-  device_id?: string | null;
+  account_id?: string | null;
   error_message: string;
   context?: Record<string, any>;
   created_at: string;
 };
 
+type AdminTab = "testers" | "briefings" | "errors";
+
 function formatDate(value?: string | null) {
   if (!value) return "—";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-
   return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",
     month: "2-digit",
@@ -55,28 +55,35 @@ function formatDate(value?: string | null) {
   }).format(date);
 }
 
-function getStatusLabel(status: TestUser["status"]) {
+function getStatusLabel(status: TesterAccount["status"]) {
   if (status === "approved") return "Freigegeben";
   if (status === "blocked") return "Gesperrt";
   return "Freigabe ausstehend";
 }
 
-function getStatusBadgeClass(status: TestUser["status"]) {
-  if (status === "approved") {
-    return "border-emerald-400/30 bg-emerald-500/15 text-emerald-300";
-  }
-  if (status === "blocked") {
-    return "border-red-400/30 bg-red-500/15 text-red-300";
-  }
-  return "border-amber-400/30 bg-amber-500/15 text-amber-300";
+function getUserNameByAccountId(accountId: string | null | undefined, users: TesterAccount[]) {
+  const user = users.find((u) => u.id === accountId);
+  if (!user) return "Unbekannter Nutzer";
+  return `${user.first_name} ${user.last_name}`;
 }
 
-function getStatusCardClass(status: TestUser["status"]) {
-  if (status === "approved") return "border-emerald-400/20";
-  if (status === "blocked") return "border-red-400/20";
-  return "border-amber-400/20";
+function getReadableErrorTitle(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+  if (normalized.includes("quota")) return "API-Limit erreicht";
+  if (normalized.includes("503") || normalized.includes("high demand")) return "KI derzeit ausgelastet";
+  if (normalized.includes("delete failed")) return "Löschen fehlgeschlagen";
+  if (normalized.includes("briefing")) return "Briefing-Fehler";
+  return "Technischer Fehler";
 }
 
+function getReadableErrorDescription(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+  if (normalized.includes("quota")) return "Das Kontingent der angebundenen API wurde erreicht.";
+  if (normalized.includes("503") || normalized.includes("high demand")) return "Der Dienst war vorübergehend ausgelastet.";
+  if (normalized.includes("delete failed")) return "Der Nutzer oder zugehörige Protokolle konnten nicht vollständig gelöscht werden.";
+  if (normalized.includes("briefing")) return "Bei der Erstellung des Briefings ist ein Fehler aufgetreten.";
+  return "Es ist ein technischer Fehler aufgetreten.";
+}
 function getLastActivityState(lastSeenAt?: string | null) {
   if (!lastSeenAt) {
     return { label: "Keine Aktivität", className: "text-muted-foreground" };
@@ -99,129 +106,31 @@ function getLastActivityState(lastSeenAt?: string | null) {
 
   return { label: "Inaktiv", className: "text-red-300" };
 }
-
-function getUserNameByDeviceId(deviceId: string, users: TestUser[]) {
-  const user = users.find((u) => u.device_id === deviceId);
-  if (!user) return "Unbekannter Tester";
-  return `${user.first_name} ${user.last_name}`;
-}
-
-function getEventLabel(eventType: string) {
-  if (eventType === "briefing_generated") return "Briefing erstellt";
-  if (eventType === "app_opened") return "App geöffnet";
-  if (eventType === "tester_registered") return "Tester registriert";
-  return eventType;
-}
-
-function getReadableErrorTitle(errorMessage: string) {
-  const normalized = errorMessage.toLowerCase();
-
-  if (normalized.includes("duplicate key value violates unique constraint")) {
-    return "Doppelte Registrierung";
-  }
-
-  if (normalized.includes("invalid passcode")) {
-    return "Ungültiger Admin-Passcode";
-  }
-
-  if (normalized.includes("failed to register tester")) {
-    return "Registrierung fehlgeschlagen";
-  }
-
-  if (normalized.includes("failed to load tester state")) {
-    return "Testerstatus konnte nicht geladen werden";
-  }
-
-  if (normalized.includes("briefing generation failed")) {
-    return "Briefing-Erstellung fehlgeschlagen";
-  }
-
-  if (normalized.includes("unexpected briefing generation error")) {
-    return "Unerwarteter Fehler bei der Briefing-Erstellung";
-  }
-
-  if (normalized.includes("quota")) {
-    return "API-Limit erreicht";
-  }
-
-  if (normalized.includes("503") || normalized.includes("high demand")) {
-    return "KI derzeit ausgelastet";
-  }
-
-  if (normalized.includes("delete failed")) {
-    return "Löschen fehlgeschlagen";
-  }
-
-  return "Technischer Fehler";
-}
-
-function getReadableErrorDescription(errorMessage: string) {
-  const normalized = errorMessage.toLowerCase();
-
-  if (normalized.includes("duplicate key value violates unique constraint")) {
-    return "Dieses Gerät war bereits registriert. Der vorhandene Testzugang wurde erneut erkannt.";
-  }
-
-  if (normalized.includes("invalid passcode")) {
-    return "Für den Adminbereich wurde ein falscher Passcode eingegeben.";
-  }
-
-  if (normalized.includes("failed to register tester")) {
-    return "Die Registrierung des Testers konnte nicht gespeichert werden.";
-  }
-
-  if (normalized.includes("failed to load tester state")) {
-    return "Der Freigabestatus des Testers konnte nicht geladen werden.";
-  }
-
-  if (normalized.includes("briefing generation failed")) {
-    return "Das Briefing konnte nicht erfolgreich erzeugt werden.";
-  }
-
-  if (normalized.includes("unexpected briefing generation error")) {
-    return "Bei der Briefing-Erstellung ist ein unerwarteter technischer Fehler aufgetreten.";
-  }
-
-  if (normalized.includes("quota")) {
-    return "Das Kontingent der angebundenen KI/API wurde erreicht.";
-  }
-
-  if (normalized.includes("503") || normalized.includes("high demand")) {
-    return "Die KI oder der Dienst war zum Zeitpunkt der Anfrage vorübergehend überlastet.";
-  }
-
-  if (normalized.includes("delete failed")) {
-    return "Der Nutzer oder zugehörige Protokolle konnten nicht vollständig gelöscht werden.";
-  }
-
-  return "Es ist ein technischer Fehler aufgetreten. Der Originaltext steht unten zur genaueren Prüfung.";
-}
-
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
   const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [users, setUsers] = useState<TestUser[]>([]);
+  const [accounts, setAccounts] = useState<TesterAccount[]>([]);
   const [usageEvents, setUsageEvents] = useState<UsageEvent[]>([]);
   const [appErrors, setAppErrors] = useState<AppErrorRow[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [updatingDeviceId, setUpdatingDeviceId] = useState<string | null>(null);
-  const [deleteConfirmDeviceId, setDeleteConfirmDeviceId] = useState<string | null>(null);
-  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<AdminTab>("testers");
 
   async function loadAllData() {
     try {
       setLoadingAll(true);
-
-      const [usersResult, usageResult, errorResult] = await Promise.all([
-        getAllTestUsers(),
+      const [accountsResult, usageResult, errorResult] = await Promise.all([
+        getAllTesterAccounts(),
         getUsageEvents(50),
         getAppErrors(30),
       ]);
 
-      setUsers(usersResult as TestUser[]);
+      setAccounts(accountsResult as TesterAccount[]);
       setUsageEvents(usageResult as UsageEvent[]);
       setAppErrors(errorResult as AppErrorRow[]);
     } catch (error) {
@@ -246,10 +155,6 @@ export default function AdminPage() {
         await loadAllData();
       } else {
         setAuthorized(false);
-
-        if (result?.isEligibleAdmin === false) {
-          setStatusMessage("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
-        }
       }
     } catch (error) {
       console.error(error);
@@ -270,20 +175,14 @@ export default function AdminPage() {
 
       const response = await fetch("/api/admin-login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ passcode }),
       });
 
       const result = await response.json();
 
       if (!response.ok || !result?.success) {
-        if (response.status === 403) {
-          setLoginError("Dieser Nutzer ist nicht für den Adminbereich berechtigt.");
-        } else {
-          setLoginError("Admin-Passcode ist nicht korrekt.");
-        }
+        setLoginError("Admin-Passcode ist nicht korrekt oder dieser Nutzer ist nicht berechtigt.");
         return;
       }
 
@@ -295,70 +194,50 @@ export default function AdminPage() {
   }
 
   async function handleLogout() {
-    await fetch("/api/admin-logout", {
-      method: "POST",
-    });
-
+    await fetch("/api/admin-logout", { method: "POST" });
     setAuthorized(false);
-    setUsers([]);
+    setAccounts([]);
     setUsageEvents([]);
     setAppErrors([]);
     setStatusMessage("");
   }
 
   async function handleStatusChange(
-    user: TestUser,
+    account: TesterAccount,
     nextStatus: "pending" | "approved" | "blocked"
   ) {
     try {
-      setUpdatingDeviceId(user.device_id);
+      setUpdatingId(account.id);
       setStatusMessage("");
 
-      if (user.status === nextStatus) {
-        setStatusMessage(
-          `${user.first_name} ${user.last_name} ist bereits auf "${getStatusLabel(nextStatus)}" gesetzt.`
-        );
-        return;
-      }
-
-      await updateTestUserStatus({
-        deviceId: user.device_id,
+      await updateTesterAccountStatus({
+        accountId: account.id,
         status: nextStatus,
       });
 
       await loadAllData();
-
       setStatusMessage(
-        `${user.first_name} ${user.last_name} wurde auf "${getStatusLabel(nextStatus)}" gesetzt.`
+        `${account.first_name} ${account.last_name} wurde auf "${getStatusLabel(nextStatus)}" gesetzt.`
       );
     } catch (error) {
       console.error(error);
       setStatusMessage("Der Status konnte nicht aktualisiert werden.");
     } finally {
-      setUpdatingDeviceId(null);
+      setUpdatingId(null);
     }
   }
 
-  function startDeleteUser(deviceId: string) {
-    setDeleteConfirmDeviceId(deviceId);
-    setStatusMessage("");
-  }
-
-  function cancelDeleteUser() {
-    setDeleteConfirmDeviceId(null);
-  }
-
-  async function confirmDeleteUser(user: TestUser) {
+  async function confirmDeleteAccount(account: TesterAccount) {
     try {
-      setDeletingDeviceId(user.device_id);
+      setDeletingId(account.id);
       setStatusMessage("");
 
-      await deleteTestUserCompletely(user.device_id);
-      setDeleteConfirmDeviceId(null);
+      await deleteTesterAccountCompletely(account.id);
+      setDeleteConfirmId(null);
       await loadAllData();
 
       setStatusMessage(
-        `${user.first_name} ${user.last_name} wurde vollständig gelöscht. Eine erneute Registrierung ist möglich.`
+        `${account.first_name} ${account.last_name} wurde vollständig gelöscht.`
       );
     } catch (error: any) {
       console.error(error);
@@ -366,25 +245,9 @@ export default function AdminPage() {
         `Der Nutzer konnte nicht gelöscht werden. Technischer Grund: ${error?.message || "Unbekannter Fehler"}`
       );
     } finally {
-      setDeletingDeviceId(null);
+      setDeletingId(null);
     }
   }
-
-  const stats = useMemo(() => {
-    const approved = users.filter((u) => u.status === "approved").length;
-    const pending = users.filter((u) => u.status === "pending").length;
-    const blocked = users.filter((u) => u.status === "blocked").length;
-    const briefingCount = usageEvents.filter((e) => e.event_type === "briefing_generated").length;
-
-    return {
-      approved,
-      pending,
-      blocked,
-      total: users.length,
-      briefingCount,
-      errorCount: appErrors.length,
-    };
-  }, [users, usageEvents, appErrors]);
 
   const briefingEvents = useMemo(
     () => usageEvents.filter((e) => e.event_type === "briefing_generated"),
@@ -463,7 +326,7 @@ export default function AdminPage() {
                 Admin Dashboard
               </h1>
               <p className="text-sm text-muted-foreground">
-                Tester, Briefings und Fehler zentral überwachen.
+                Tester, Briefings und Fehler übersichtlich in Reitern.
               </p>
             </div>
 
@@ -480,239 +343,181 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Tester gesamt
-              </div>
-              <div className="mt-2 text-2xl font-bold text-white">{stats.total}</div>
-            </div>
-
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-emerald-300">
-                Freigegeben
-              </div>
-              <div className="mt-2 text-2xl font-bold text-white">{stats.approved}</div>
-            </div>
-
-            <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-amber-300">
-                Ausstehend
-              </div>
-              <div className="mt-2 text-2xl font-bold text-white">{stats.pending}</div>
-            </div>
-
-            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-red-300">
-                Gesperrt
-              </div>
-              <div className="mt-2 text-2xl font-bold text-white">{stats.blocked}</div>
-            </div>
-
-            <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-blue-300">
-                Briefings
-              </div>
-              <div className="mt-2 text-2xl font-bold text-white">{stats.briefingCount}</div>
-            </div>
-
-            <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-rose-300">
-                Fehler
-              </div>
-              <div className="mt-2 text-2xl font-bold text-white">{stats.errorCount}</div>
-            </div>
-          </div>
-
           {statusMessage && (
             <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-white">
               {statusMessage}
             </div>
           )}
 
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={activeTab === "testers" ? "default" : "outline"}
+              className="border-white/10"
+              onClick={() => setActiveTab("testers")}
+            >
+              Tester
+            </Button>
+            <Button
+              variant={activeTab === "briefings" ? "default" : "outline"}
+              className="border-white/10"
+              onClick={() => setActiveTab("briefings")}
+            >
+              Letzte Briefings
+            </Button>
+            <Button
+              variant={activeTab === "errors" ? "default" : "outline"}
+              className="border-white/10"
+              onClick={() => setActiveTab("errors")}
+            >
+              Letzte Fehler
+            </Button>
+          </div>
+
           {loadingAll ? (
             <div className="text-sm text-muted-foreground">Daten werden geladen...</div>
           ) : (
             <>
-              <section className="space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold text-white">Tester</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Freigabe und Aktivität aller registrierten Tester.
-                  </p>
-                </div>
-
+              {activeTab === "testers" && (
                 <div className="grid grid-cols-1 gap-4">
-                  {users.map((user) => {
-                    const isUpdating = updatingDeviceId === user.device_id;
-                    const activityState = getLastActivityState(user.last_seen_at);
-
-                    return (
-                      <Card
-                        key={user.id}
-                        className={`briefing-card ${getStatusCardClass(user.status)}`}
-                      >
-                        <CardContent className="p-5 space-y-5">
-                          <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div className="space-y-2 min-w-0">
-                              <div className="text-xl font-semibold text-white">
-                                {user.first_name} {user.last_name}
-                              </div>
-                              <div className="text-sm text-muted-foreground break-all">
-                                Device ID: {user.device_id}
-                              </div>
+                  {accounts.map((account) => (
+                    <Card key={account.id} className="briefing-card">
+                      <CardContent className="p-5 space-y-5">
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="space-y-2 min-w-0">
+                            <div className="text-xl font-semibold text-white">
+                              {account.first_name} {account.last_name}
+                              {account.is_admin && (
+                                <span className="ml-2 text-xs text-primary">Admin</span>
+                              )}
                             </div>
+                            <div className="text-sm text-muted-foreground">
+                              Registriert: {formatDate(account.created_at)}
+                            </div>
+                          </div>
 
-                            <div
-                              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusBadgeClass(
-                                user.status
-                              )}`}
+                          <div className="text-sm text-white">
+                            {getStatusLabel(account.status)}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Zuletzt aktiv
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                              {formatDate(account.last_seen_at)}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Aktivität
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                              {getLastActivityState(account.last_seen_at).label}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-white/[0.03] p-3">
+                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              Freigegeben am
+                            </div>
+                            <div className="mt-2 text-sm font-medium text-white">
+                              {formatDate(account.approved_at)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              className="h-10"
+                              disabled={updatingId === account.id || deletingId === account.id || account.status === "approved"}
+                              onClick={() => handleStatusChange(account, "approved")}
                             >
-                              {getStatusLabel(user.status)}
-                            </div>
+                              Freigeben
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              className="h-10 border-white/10"
+                              disabled={updatingId === account.id || deletingId === account.id || account.status === "pending"}
+                              onClick={() => handleStatusChange(account, "pending")}
+                            >
+                              Freigabe ausstehend
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              className="h-10 border-white/10"
+                              disabled={updatingId === account.id || deletingId === account.id || account.status === "blocked"}
+                              onClick={() => handleStatusChange(account, "blocked")}
+                            >
+                              Sperren
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
+                              disabled={updatingId === account.id || deletingId === account.id}
+                              onClick={() => setDeleteConfirmId(account.id)}
+                            >
+                              Löschen
+                            </Button>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Registriert
+                          {deleteConfirmId === account.id && (
+                            <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 space-y-3">
+                              <div className="text-sm text-white font-medium">
+                                Soll {account.first_name} {account.last_name} wirklich vollständig gelöscht werden?
                               </div>
-                              <div className="mt-2 text-sm font-medium text-white">
-                                {formatDate(user.created_at)}
-                              </div>
-                            </div>
 
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Zuletzt aktiv
-                              </div>
-                              <div className="mt-2 text-sm font-medium text-white">
-                                {formatDate(user.last_seen_at)}
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Aktivität
-                              </div>
-                              <div className={`mt-2 text-sm font-medium ${activityState.className}`}>
-                                {activityState.label}
+                              <div className="flex gap-2">
+                                <Button
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                  disabled={deletingId === account.id}
+                                  onClick={() => confirmDeleteAccount(account)}
+                                >
+                                  {deletingId === account.id ? "Wird gelöscht..." : "Endgültig löschen"}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="border-white/10"
+                                  disabled={deletingId === account.id}
+                                  onClick={() => setDeleteConfirmId(null)}
+                                >
+                                  Abbrechen
+                                </Button>
                               </div>
                             </div>
-
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Freigegeben am
-                              </div>
-                              <div className="mt-2 text-sm font-medium text-white">
-                                {formatDate(user.approved_at)}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="flex gap-2 flex-wrap">
-                              <Button
-                                className="h-10"
-                                disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "approved"}
-                                onClick={() => handleStatusChange(user, "approved")}
-                              >
-                                {isUpdating ? "Wird aktualisiert..." : "Freigeben"}
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="h-10 border-white/10"
-                                disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "pending"}
-                                onClick={() => handleStatusChange(user, "pending")}
-                              >
-                                Freigabe ausstehend
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="h-10 border-white/10"
-                                disabled={isUpdating || deletingDeviceId === user.device_id || user.status === "blocked"}
-                                onClick={() => handleStatusChange(user, "blocked")}
-                              >
-                                Sperren
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
-                                disabled={isUpdating || deletingDeviceId === user.device_id}
-                                onClick={() => startDeleteUser(user.device_id)}
-                              >
-                                Löschen
-                              </Button>
-                            </div>
-
-                            {deleteConfirmDeviceId === user.device_id && (
-                              <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 space-y-3">
-                                <div className="text-sm text-white font-medium">
-                                  Soll {user.first_name} {user.last_name} wirklich vollständig gelöscht werden?
-                                </div>
-                                <div className="text-xs text-muted-foreground leading-5">
-                                  Dabei werden auch die zugehörigen Briefing-Logs und Fehlerprotokolle dieses Geräts entfernt.
-                                  Der Nutzer kann sich später erneut registrieren.
-                                </div>
-
-                                <div className="flex gap-2 flex-wrap">
-                                  <Button
-                                    className="h-10 bg-red-600 hover:bg-red-700 text-white"
-                                    disabled={deletingDeviceId === user.device_id}
-                                    onClick={() => confirmDeleteUser(user)}
-                                  >
-                                    {deletingDeviceId === user.device_id ? "Wird gelöscht..." : "Endgültig löschen"}
-                                  </Button>
-
-                                  <Button
-                                    variant="outline"
-                                    className="h-10 border-white/10"
-                                    disabled={deletingDeviceId === user.device_id}
-                                    onClick={cancelDeleteUser}
-                                  >
-                                    Abbrechen
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </section>
+              )}
 
-              <section className="space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold text-white">Letzte Briefings</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Wer wann welches Briefing generiert hat.
-                  </p>
-                </div>
-
-                {briefingEvents.length === 0 ? (
-                  <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-                    Noch keine Briefing-Generierungen protokolliert.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {briefingEvents.map((event) => (
+              {activeTab === "briefings" && (
+                <div className="grid grid-cols-1 gap-3">
+                  {briefingEvents.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+                      Noch keine Briefing-Generierungen protokolliert.
+                    </div>
+                  ) : (
+                    briefingEvents.map((event) => (
                       <Card key={event.id} className="briefing-card">
                         <CardContent className="p-4 space-y-3">
                           <div className="flex items-start justify-between gap-4 flex-wrap">
                             <div className="space-y-1">
                               <div className="text-base font-semibold text-white">
-                                {getUserNameByDeviceId(event.device_id, users)}
+                                {getUserNameByAccountId(event.account_id, accounts)}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {getEventLabel(event.event_type)}
+                                Briefing erstellt
                               </div>
                             </div>
-
                             <div className="text-sm text-muted-foreground">
                               {formatDate(event.created_at)}
                             </div>
@@ -723,92 +528,44 @@ export default function AdminPage() {
                               <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                                 Ausgabeformat
                               </div>
-                              <div className="mt-2 text-white">
-                                {event.payload?.briefingType ?? "—"}
-                              </div>
+                              <div className="mt-2 text-white">{event.payload?.briefingType ?? "—"}</div>
                             </div>
 
                             <div className="rounded-xl bg-white/[0.03] p-3">
                               <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                                 Zeitfenster
                               </div>
-                              <div className="mt-2 text-white">
-                                {event.payload?.timeframe ?? "—"}
-                              </div>
+                              <div className="mt-2 text-white">{event.payload?.timeframe ?? "—"}</div>
                             </div>
 
                             <div className="rounded-xl bg-white/[0.03] p-3">
                               <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                                 Sprache
                               </div>
-                              <div className="mt-2 text-white">
-                                {event.payload?.language ?? "—"}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Kategorien
-                              </div>
-                              <div className="mt-2 text-white">
-                                {Array.isArray(event.payload?.categories)
-                                  ? event.payload.categories.join(", ")
-                                  : "—"}
-                              </div>
-                            </div>
-
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Regionen
-                              </div>
-                              <div className="mt-2 text-white">
-                                {Array.isArray(event.payload?.regions)
-                                  ? event.payload.regions.join(", ")
-                                  : "—"}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Überschrift
-                            </div>
-                            <div className="mt-2 text-white">
-                              {event.payload?.headline || "—"}
+                              <div className="mt-2 text-white">{event.payload?.language ?? "—"}</div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="space-y-4">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-semibold text-white">Letzte Fehler</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Fehlermeldungen und technische Probleme der Tester.
-                  </p>
+                    ))
+                  )}
                 </div>
+              )}
 
-                {appErrors.length === 0 ? (
-                  <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-                    Keine Fehler protokolliert.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {appErrors.map((errorRow) => (
+              {activeTab === "errors" && (
+                <div className="grid grid-cols-1 gap-3">
+                  {appErrors.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+                      Keine Fehler protokolliert.
+                    </div>
+                  ) : (
+                    appErrors.map((errorRow) => (
                       <Card key={errorRow.id} className="briefing-card border-red-400/15">
                         <CardContent className="p-4 space-y-4">
                           <div className="flex items-start justify-between gap-4 flex-wrap">
                             <div className="space-y-2">
                               <div className="text-base font-semibold text-white">
-                                {errorRow.device_id
-                                  ? getUserNameByDeviceId(errorRow.device_id, users)
-                                  : "Unbekannter Tester"}
+                                {getUserNameByAccountId(errorRow.account_id, accounts)}
                               </div>
 
                               <div className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
@@ -833,21 +590,12 @@ export default function AdminPage() {
                               {errorRow.error_message}
                             </div>
                           </div>
-
-                          <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
-                            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                              Kontext
-                            </div>
-                            <pre className="mt-2 whitespace-pre-wrap break-words text-white text-xs">
-                              {JSON.stringify(errorRow.context ?? {}, null, 2)}
-                            </pre>
-                          </div>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
+                    ))
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
