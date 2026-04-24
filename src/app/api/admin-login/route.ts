@@ -32,23 +32,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: user, error } = await supabase
+    const { data: currentUser, error } = await supabase
       .from("test_users")
       .select("*")
       .eq("device_id", deviceId)
       .maybeSingle();
 
-    if (error) {
+    if (error || !currentUser) {
       return NextResponse.json(
         { success: false, error: "Failed to verify admin user." },
         { status: 500 }
       );
     }
 
-    const isAllowedAdmin =
-      user &&
-      String(user.first_name ?? "").trim().toLowerCase() === "florian" &&
-      String(user.last_name ?? "").trim().toLowerCase() === "schemm";
+    const adminNameMatched =
+      String(currentUser.first_name ?? "").trim().toLowerCase() === "florian" &&
+      String(currentUser.last_name ?? "").trim().toLowerCase() === "schemm";
+
+    const isAllowedAdmin = adminNameMatched && currentUser.is_admin === true;
 
     if (!isAllowedAdmin) {
       return NextResponse.json(

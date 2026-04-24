@@ -7,26 +7,37 @@ export async function GET() {
   const adminCookie = cookieStore.get("newsbriefing_admin")?.value;
   const deviceId = cookieStore.get("newsbriefing_device_id")?.value;
 
-  if (adminCookie !== "true" || !deviceId) {
-    return NextResponse.json({ authorized: false, isEligibleAdmin: false });
+  if (!deviceId) {
+    return NextResponse.json({
+      authorized: false,
+      isEligibleAdmin: false,
+      adminNameMatched: false,
+    });
   }
 
-  const { data: user, error } = await supabase
+  const { data: currentUser, error } = await supabase
     .from("test_users")
     .select("*")
     .eq("device_id", deviceId)
     .maybeSingle();
 
-  if (error || !user) {
-    return NextResponse.json({ authorized: false, isEligibleAdmin: false });
+  if (error || !currentUser) {
+    return NextResponse.json({
+      authorized: false,
+      isEligibleAdmin: false,
+      adminNameMatched: false,
+    });
   }
 
-  const isEligibleAdmin =
-    String(user.first_name ?? "").trim().toLowerCase() === "florian" &&
-    String(user.last_name ?? "").trim().toLowerCase() === "schemm";
+  const adminNameMatched =
+    String(currentUser.first_name ?? "").trim().toLowerCase() === "florian" &&
+    String(currentUser.last_name ?? "").trim().toLowerCase() === "schemm";
+
+  const isEligibleAdmin = adminNameMatched && currentUser.is_admin === true;
 
   return NextResponse.json({
     authorized: adminCookie === "true" && isEligibleAdmin,
     isEligibleAdmin,
+    adminNameMatched,
   });
 }

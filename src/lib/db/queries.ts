@@ -99,6 +99,19 @@ export async function getTestUserByDeviceId(deviceId: string) {
   return data;
 }
 
+export async function getAdminEligibleUserByName(firstName: string, lastName: string) {
+  const { data, error } = await supabase
+    .from("test_users")
+    .select("*")
+    .ilike("first_name", firstName.trim())
+    .ilike("last_name", lastName.trim())
+    .eq("is_admin", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function registerTestUser(input: {
   deviceId: string;
   firstName: string;

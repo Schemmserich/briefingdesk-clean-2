@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, History, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getOrCreateDeviceId } from "@/lib/testerDevice";
 
 type NavItem = {
   label: string;
@@ -19,10 +20,13 @@ export function Navigation() {
   useEffect(() => {
     async function checkAdminSession() {
       try {
+        getOrCreateDeviceId();
+
         const response = await fetch("/api/admin-session", {
           method: "GET",
           cache: "no-store",
         });
+
         const result = await response.json();
         setShowAdmin(!!result?.isEligibleAdmin);
       } catch {
