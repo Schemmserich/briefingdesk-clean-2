@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Navigation } from "@/components/Navigation";
 import { BriefingDisplay } from "@/components/BriefingDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,14 +63,9 @@ export default function HistoryPage() {
       const rows = await getSavedBriefingsForAccount(accountId);
       setEntries(rows);
 
-      if (rows.length === 0) {
-        setSelectedEntryId(null);
-        return;
-      }
-
-      setSelectedEntryId((prev) =>
-        prev && rows.some((entry) => entry.id === prev) ? prev : rows[0].id
-      );
+      // WICHTIG:
+      // Nicht automatisch das erste Briefing groß öffnen.
+      setSelectedEntryId(null);
     } catch (error) {
       console.error(error);
       setStatusMessage("Archiv konnte nicht geladen werden.");
@@ -82,10 +78,8 @@ export default function HistoryPage() {
     loadArchive();
   }, []);
 
-  const selectedEntry = useMemo(
-    () => entries.find((entry) => entry.id === selectedEntryId) ?? null,
-    [entries, selectedEntryId]
-  );
+  const selectedEntry =
+    entries.find((entry) => entry.id === selectedEntryId) ?? null;
 
   const selectedLanguage = selectedEntry
     ? detectLanguageFromEntry(selectedEntry)
@@ -100,7 +94,7 @@ export default function HistoryPage() {
       setEntries(nextEntries);
 
       if (selectedEntryId === entry.id) {
-        setSelectedEntryId(nextEntries[0]?.id ?? null);
+        setSelectedEntryId(null);
       }
 
       setStatusMessage("Briefing wurde gelöscht.");
@@ -160,144 +154,155 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 lg:px-6 lg:py-8">
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Archiv</h1>
-          <p className="text-sm sm:text-base text-muted-foreground leading-6">
-            Die letzten 5 gespeicherten Briefings werden synchron zwischen Browser und App angezeigt.
-          </p>
-        </div>
+    <>
+      <Navigation />
 
-        {statusMessage && (
-          <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-white">
-            {statusMessage}
+      <main className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 lg:px-6 lg:py-8">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Archiv</h1>
+            <p className="text-sm sm:text-base text-muted-foreground leading-6">
+              Die letzten 5 gespeicherten Briefings werden synchron zwischen Browser und App angezeigt.
+            </p>
           </div>
-        )}
 
-        {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-            Archiv wird geladen...
-          </div>
-        ) : entries.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-            Noch keine gespeicherten Briefings vorhanden.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-4 space-y-4">
-              {entries.map((entry) => {
-                const entryLanguage = detectLanguageFromEntry(entry);
-                const isSelected = entry.id === selectedEntryId;
-                const isRenaming = renameEntryId === entry.id;
+          {statusMessage && (
+            <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-white">
+              {statusMessage}
+            </div>
+          )}
 
-                return (
-                  <Card
-                    key={entry.id}
-                    className={`briefing-card transition-all ${
-                      isSelected ? "border-primary/40" : "border-white/10"
-                    }`}
-                  >
-                    <CardContent className="p-4 space-y-4">
-                      {isRenaming ? (
-                        <div className="space-y-2">
-                          <input
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-primary"
-                            placeholder="Titel eingeben"
-                          />
-                          <div className="flex gap-2">
-                            <Button className="h-9" onClick={() => saveRename(entry)}>
-                              Speichern
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="h-9 border-white/10"
-                              onClick={cancelRename}
-                            >
-                              Abbrechen
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
+          {loading ? (
+            <div className="rounded-2xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+              Archiv wird geladen...
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
+              Noch keine gespeicherten Briefings vorhanden.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-4 space-y-4">
+                {entries.map((entry) => {
+                  const entryLanguage = detectLanguageFromEntry(entry);
+                  const isSelected = entry.id === selectedEntryId;
+                  const isRenaming = renameEntryId === entry.id;
+
+                  return (
+                    <Card
+                      key={entry.id}
+                      className={`briefing-card transition-all ${
+                        isSelected ? "border-primary/40" : "border-white/10"
+                      }`}
+                    >
+                      <CardContent className="p-4 space-y-4">
+                        {isRenaming ? (
                           <div className="space-y-2">
-                            <h2 className="text-base sm:text-lg font-semibold text-white leading-6 line-clamp-2">
-                              {entry.title}
-                            </h2>
-
-                            {entry.subtitle && (
-                              <p className="text-sm text-muted-foreground leading-5 line-clamp-2">
-                                {entry.subtitle}
-                              </p>
-                            )}
-
-                            <div className="text-xs text-muted-foreground">
-                              {buildMetaLine(entry, entryLanguage)}
+                            <input
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-primary"
+                              placeholder="Titel eingeben"
+                            />
+                            <div className="flex gap-2">
+                              <Button className="h-9" onClick={() => saveRename(entry)}>
+                                Speichern
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="h-9 border-white/10"
+                                onClick={cancelRename}
+                              >
+                                Abbrechen
+                              </Button>
                             </div>
                           </div>
+                        ) : (
+                          <>
+                            <div className="space-y-2">
+                              <h2 className="text-base sm:text-lg font-semibold text-white leading-6 line-clamp-2">
+                                {entry.title}
+                              </h2>
 
-                          <div className="flex gap-2 flex-wrap">
-                            <Button
-                              variant={isSelected ? "default" : "outline"}
-                              className="h-10 border-white/10"
-                              onClick={() => setSelectedEntryId(entry.id)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Öffnen
-                            </Button>
+                              {entry.subtitle && (
+                                <p className="text-sm text-muted-foreground leading-5 line-clamp-2">
+                                  {entry.subtitle}
+                                </p>
+                              )}
 
-                            <Button
-                              variant="outline"
-                              className="h-10 border-white/10"
-                              onClick={() => handleExportPdf(entry)}
-                            >
-                              <Download className="mr-2 h-4 w-4" />
-                              PDF
-                            </Button>
+                              <div className="text-xs text-muted-foreground">
+                                {buildMetaLine(entry, entryLanguage)}
+                              </div>
+                            </div>
 
-                            <Button
-                              variant="outline"
-                              className="h-10 border-white/10"
-                              onClick={() => startRename(entry)}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Umbenennen
-                            </Button>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                variant={isSelected ? "default" : "outline"}
+                                className="h-10 border-white/10"
+                                onClick={() => setSelectedEntryId(entry.id)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Öffnen
+                              </Button>
 
-                            <Button
-                              variant="outline"
-                              className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
-                              onClick={() => handleDelete(entry)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Löschen
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                              <Button
+                                variant="outline"
+                                className="h-10 border-white/10"
+                                onClick={() => handleExportPdf(entry)}
+                              >
+                                <Download className="mr-2 h-4 w-4" />
+                                PDF
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                className="h-10 border-white/10"
+                                onClick={() => startRename(entry)}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Umbenennen
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
+                                onClick={() => handleDelete(entry)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Löschen
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <div className="lg:col-span-8 min-w-0">
+                {selectedEntry ? (
+                  <BriefingDisplay
+                    briefing={selectedEntry.briefing as BriefingResult}
+                    language={selectedLanguage}
+                  />
+                ) : (
+                  <div className="min-h-[420px] sm:min-h-[520px] lg:h-[600px] flex flex-col items-center justify-center space-y-4 bg-card/30 rounded-xl border border-dashed border-white/10 px-6 text-center">
+                    <div className="space-y-2 max-w-md">
+                      <p className="text-base sm:text-lg font-semibold text-white">
+                        Bitte ein Briefing auswählen
+                      </p>
+                      <p className="text-sm sm:text-base text-muted-foreground leading-6">
+                        Wähle links ein gespeichertes Briefing aus, um die Detailansicht zu öffnen.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-
-            <div className="lg:col-span-8 min-w-0">
-              {selectedEntry ? (
-                <BriefingDisplay
-                  briefing={selectedEntry.briefing as BriefingResult}
-                  language={selectedLanguage}
-                />
-              ) : (
-                <div className="rounded-2xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-                  Bitte ein Briefing auswählen.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </main>
+          )}
+        </div>
+      </main>
+    </>
   );
 }
