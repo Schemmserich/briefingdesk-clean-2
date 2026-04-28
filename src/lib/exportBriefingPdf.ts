@@ -1,24 +1,35 @@
+"use client";
+
 import jsPDF from "jspdf";
-import { ArchivedBriefing } from "@/lib/briefingArchive";
+import type { SavedBriefingEntry } from "@/lib/briefingArchive";
+import type { Language } from "@/lib/types";
 
-function sanitizeFilename(value: string) {
-  return value
-    .replace(/[\\/:*?"<>|]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80);
-}
+type ExportBriefingPdfInput = {
+  entry: SavedBriefingEntry;
+  language: Language;
+};
 
-function formatArchiveDate(value: string, language: "de" | "en") {
-  const locale = language === "de" ? "de-DE" : "en-US";
+function formatDate(value?: string | null, language: Language = "de") {
+  if (!value) return "—";
 
-  return new Intl.DateTimeFormat(locale, {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
 }
 
 function addWrappedText(
@@ -27,112 +38,28 @@ function addWrappedText(
   x: number,
   y: number,
   maxWidth: number,
-  lineHeight: number,
-  pageHeight: number,
-  marginBottom: number
+  lineHeight: number
 ) {
-  const lines = doc.splitTextToSize(text, maxWidth);
+  const lines = doc.splitTextToSize(text || "", maxWidth) as string[];
+  let currentY = y;
 
   for (const line of lines) {
-    if (y > pageHeight - marginBottom) {
+    if (currentY > 280) {
       doc.addPage();
-      y = 20;
+      currentY = 20;
     }
 
-    doc.text(line, x, y);
-    y += lineHeight;
+    doc.text(line, x, currentY);
+    currentY += lineHeight;
   }
 
-  return y;
+  return currentY;
 }
 
-function addSectionTitle(
-  doc: jsPDF,
-  title: string,
-  x: number,
-  y: number,
-  pageHeight: number,
-  marginBottom: number
-) {
-  if (y > pageHeight - marginBottom) {
-    doc.addPage();
-    y = 20;
-  }
-
-  doc.setDrawColor(59, 130, 246);
-  doc.setFillColor(239, 246, 255);
-  doc.roundedRect(x, y - 5, 178, 9, 2, 2, "F");
-
-  doc.setTextColor(30, 41, 59);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text(title, x + 2, y + 1);
-
-  y += 10;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(31, 41, 55);
-
-  return y;
-}
-
-function drawMetaBox(
-  doc: jsPDF,
-  lines: string[],
-  x: number,
-  y: number,
-  width: number
-) {
-  const height = 8 + lines.length * 6;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(x, y, width, height, 3, 3, "FD");
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(55, 65, 81);
-
-  let currentY = y + 6;
-  for (const line of lines) {
-    doc.text(line, x + 4, currentY);
-    currentY += 6;
-  }
-
-  return y + height;
-}
-
-function derivePdfHeadline(entry: ArchivedBriefing) {
-  const briefing = entry.briefing ?? {};
-  const briefingType = String(briefing.briefingType ?? entry.params?.briefingType ?? "").trim();
-  let mainTitle = String(briefing.mainTitle ?? "").trim();
-
-  if (!mainTitle) {
-    const overview = String(briefing.overviewParagraph ?? "").trim();
-    if (overview) {
-      const firstSentence = overview.split(/(?<=[.!?])\s+/)[0]?.trim() || overview;
-      mainTitle =
-        firstSentence.length > 120
-          ? `${firstSentence.slice(0, 117).trim()}...`
-          : firstSentence;
-    }
-  }
-
-  if (!mainTitle) {
-    mainTitle = entry.name;
-  }
-
-  if (briefingType && mainTitle) {
-    return `${briefingType}: ${mainTitle}`;
-  }
-
-  return mainTitle || briefingType || entry.name || "News Briefing";
-}
-
-export function exportArchivedBriefingToPdf(entry: ArchivedBriefing) {
-  const briefing = entry.briefing ?? {};
-  const language: "de" | "en" = entry.language === "de" ? "de" : "en";
-
+export async function exportBriefingPdf({
+  entry,
+  language,
+}: ExportBriefingPdfInput) {
   const doc = new jsPDF({
     orientation: "p",
     unit: "mm",
@@ -140,212 +67,136 @@ export function exportArchivedBriefingToPdf(entry: ArchivedBriefing) {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 16;
-  const marginRight = 16;
-  const marginBottom = 18;
-  const maxWidth = pageWidth - marginLeft - marginRight;
+  const contentWidth = pageWidth - 30;
+  const left = 15;
 
-  let y = 18;
+  const createdLabel = language === "de" ? "Gespeichert am" : "Saved at";
+  const typeLabel = language === "de" ? "Briefing-Typ" : "Briefing Type";
+  const timeframeLabel = language === "de" ? "Zeitfenster" : "Timeframe";
+  const categoriesLabel = language === "de" ? "Kategorien" : "Categories";
+  const regionsLabel = language === "de" ? "Regionen" : "Regions";
+  const languageLabel = language === "de" ? "Sprache" : "Language";
+  const contentLabel = language === "de" ? "Briefing-Inhalt" : "Briefing Content";
 
-  const fullTitle = derivePdfHeadline(entry);
+  let y = 20;
 
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageWidth, 28, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("News Briefing", marginLeft, 14);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(
-    language === "de" ? "Archivexport" : "Archive Export",
-    marginLeft,
-    21
-  );
-
-  y = 38;
-
-  doc.setTextColor(17, 24, 39);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
-  y = addWrappedText(doc, fullTitle, marginLeft, y, maxWidth, 8, pageHeight, marginBottom);
+  y = addWrappedText(doc, entry.title || "Briefing", left, y, contentWidth, 9);
+
+  if (entry.subtitle) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    y += 1;
+    y = addWrappedText(doc, entry.subtitle, left, y, contentWidth, 6);
+  }
 
   y += 4;
 
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+
   const metaLines = [
-    language === "de"
-      ? `Archivname: ${entry.name}`
-      : `Archive name: ${entry.name}`,
-    language === "de"
-      ? `Gespeichert am: ${formatArchiveDate(entry.updatedAt, language)}`
-      : `Saved at: ${formatArchiveDate(entry.updatedAt, language)}`,
-    language === "de"
-      ? `Typ: ${String(briefing.briefingType ?? entry.params?.briefingType ?? "Briefing")}`
-      : `Type: ${String(briefing.briefingType ?? entry.params?.briefingType ?? "Briefing")}`,
+    `${createdLabel}: ${formatDate(entry.updatedAt, language)}`,
+    `${typeLabel}: ${entry.briefingType || "—"}`,
+    `${timeframeLabel}: ${entry.timeframe || "—"}`,
+    `${languageLabel}: ${entry.language || "—"}`,
+    `${categoriesLabel}: ${entry.categories?.length ? entry.categories.join(", ") : "—"}`,
+    `${regionsLabel}: ${entry.regions?.length ? entry.regions.join(", ") : "—"}`,
   ];
 
-  y = drawMetaBox(doc, metaLines, marginLeft, y, maxWidth) + 8;
+  for (const line of metaLines) {
+    y = addWrappedText(doc, line, left, y, contentWidth, 5.5);
+  }
 
-  doc.setTextColor(31, 41, 55);
+  y += 4;
+
+  doc.setDrawColor(70, 70, 70);
+  doc.line(left, y, pageWidth - left, y);
+  y += 8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  y = addWrappedText(doc, contentLabel, left, y, contentWidth, 7);
+
+  y += 2;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
 
-  if (briefing.overviewParagraph) {
-    y = addSectionTitle(
-      doc,
-      language === "de" ? "Überblick" : "Overview",
-      marginLeft,
-      y,
-      pageHeight,
-      marginBottom
-    );
-    y = addWrappedText(
-      doc,
-      String(briefing.overviewParagraph),
-      marginLeft,
-      y,
-      maxWidth,
-      5.8,
-      pageHeight,
-      marginBottom
-    );
-    y += 6;
+  const briefing = entry.briefing as any;
+  const contentBlocks: string[] = [];
+
+  if (briefing?.mainTitle) {
+    contentBlocks.push(String(briefing.mainTitle));
   }
 
-  for (const section of briefing.sections ?? []) {
-    const title = section?.title ? String(section.title) : "";
-    const content = section?.content ? String(section.content) : "";
+  if (briefing?.subtitle) {
+    contentBlocks.push(String(briefing.subtitle));
+  }
 
-    if (!title && !content) continue;
+  if (briefing?.summary) {
+    contentBlocks.push(String(briefing.summary));
+  }
 
-    y = addSectionTitle(
-      doc,
-      title || (language === "de" ? "Abschnitt" : "Section"),
-      marginLeft,
-      y,
-      pageHeight,
-      marginBottom
-    );
+  if (briefing?.executiveSummary) {
+    contentBlocks.push(String(briefing.executiveSummary));
+  }
 
-    if (content) {
-      y = addWrappedText(
-        doc,
-        content,
-        marginLeft,
-        y,
-        maxWidth,
-        5.6,
-        pageHeight,
-        marginBottom
-      );
-      y += 6;
+  if (Array.isArray(briefing?.sections)) {
+    for (const section of briefing.sections) {
+      if (section?.heading) {
+        contentBlocks.push(String(section.heading));
+      }
+
+      if (section?.title) {
+        contentBlocks.push(String(section.title));
+      }
+
+      if (section?.summary) {
+        contentBlocks.push(String(section.summary));
+      }
+
+      if (section?.content) {
+        contentBlocks.push(String(section.content));
+      }
+
+      if (Array.isArray(section?.bullets) && section.bullets.length > 0) {
+        for (const bullet of section.bullets) {
+          contentBlocks.push(`• ${String(bullet)}`);
+        }
+      }
     }
   }
 
-  if (briefing.whyMarketsCare) {
-    y = addSectionTitle(
-      doc,
-      language === "de" ? "Warum Märkte darauf achten" : "Why Markets Care",
-      marginLeft,
-      y,
-      pageHeight,
-      marginBottom
-    );
-    y = addWrappedText(
-      doc,
-      String(briefing.whyMarketsCare),
-      marginLeft,
-      y,
-      maxWidth,
-      5.6,
-      pageHeight,
-      marginBottom
-    );
-    y += 6;
+  if (briefing?.marketInsights) {
+    contentBlocks.push(String(briefing.marketInsights));
   }
 
-  if (briefing.whatChanged) {
-    y = addSectionTitle(
-      doc,
-      language === "de" ? "Was sich verändert hat" : "What Changed",
-      marginLeft,
-      y,
-      pageHeight,
-      marginBottom
-    );
-    y = addWrappedText(
-      doc,
-      String(briefing.whatChanged),
-      marginLeft,
-      y,
-      maxWidth,
-      5.6,
-      pageHeight,
-      marginBottom
-    );
-    y += 6;
+  if (briefing?.changeAnalysis) {
+    contentBlocks.push(String(briefing.changeAnalysis));
   }
 
-  if ((briefing.usedSources ?? []).length > 0) {
-    y = addSectionTitle(
-      doc,
-      language === "de" ? "Verwendete Quellen" : "Used Sources",
-      marginLeft,
-      y,
-      pageHeight,
-      marginBottom
-    );
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.5);
-    doc.setTextColor(55, 65, 81);
-
-    for (const source of briefing.usedSources ?? []) {
-      const sourceLine = [
-        source?.sourceName ?? "",
-        source?.title ?? "",
-        source?.publicationDate
-          ? formatArchiveDate(String(source.publicationDate), language)
-          : "",
-      ]
+  if (Array.isArray(briefing?.sources) && briefing.sources.length > 0) {
+    contentBlocks.push(language === "de" ? "Quellen:" : "Sources:");
+    for (const source of briefing.sources) {
+      const sourceLine = [source?.name, source?.category, source?.region]
         .filter(Boolean)
         .join(" · ");
-
-      if (!sourceLine) continue;
-
-      y = addWrappedText(
-        doc,
-        `• ${sourceLine}`,
-        marginLeft,
-        y,
-        maxWidth,
-        5.2,
-        pageHeight,
-        marginBottom
-      );
+      if (sourceLine) {
+        contentBlocks.push(`- ${sourceLine}`);
+      }
     }
   }
 
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i += 1) {
-    doc.setPage(i);
-    doc.setDrawColor(226, 232, 240);
-    doc.line(marginLeft, pageHeight - 12, pageWidth - marginRight, pageHeight - 12);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text("News Briefing", marginLeft, pageHeight - 6);
-    doc.text(
-      `${i}/${pageCount}`,
-      pageWidth - marginRight - 8,
-      pageHeight - 6
-    );
+  if (contentBlocks.length === 0) {
+    contentBlocks.push(language === "de" ? "Kein Inhalt verfügbar." : "No content available.");
   }
 
-  const filename = sanitizeFilename(entry.name || fullTitle || "news-briefing");
-  doc.save(`${filename}.pdf`);
+  for (const block of contentBlocks) {
+    y = addWrappedText(doc, block, left, y, contentWidth, 6);
+    y += 2;
+  }
+
+  const fileNameBase = sanitizeFileName(entry.title || "Briefing");
+  doc.save(`${fileNameBase || "Briefing"}.pdf`);
 }

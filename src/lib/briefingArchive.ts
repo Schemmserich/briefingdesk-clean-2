@@ -1,141 +1,172 @@
-export type ArchivedBriefing = {
+import { supabase } from "@/lib/db/client";
+import type { BriefingRequest, BriefingResult, Language } from "@/lib/types";
+
+export type SavedBriefingEntry = {
   id: string;
-  name: string;
+  accountId: string;
+  title: string;
+  subtitle: string;
+  language: Language;
+  briefingType: string;
+  timeframe: string;
+  categories: string[];
+  regions: string[];
+  includeMarketInsights: boolean;
+  includeChangeAnalysis: boolean;
+  briefing: BriefingResult;
   createdAt: string;
   updatedAt: string;
-  autoSaved: boolean;
-  language: "de" | "en";
-  params: any;
-  briefing: any;
 };
 
-const STORAGE_KEY = "news-briefing-archive-v1";
-const MAX_AUTO_SAVED = 5;
+type SaveBriefingInput = {
+  accountId: string;
+  language: Language;
+  params: BriefingRequest;
+  briefing: BriefingResult;
+};
 
-function canUseStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
+function buildStoredTitle(params: BriefingRequest, briefing: BriefingResult) {
+  const mainTitle = String(briefing.mainTitle ?? "").trim();
+  const briefingType = String(params.briefingType ?? "").trim();
 
-function readArchive(): ArchivedBriefing[] {
-  if (!canUseStorage()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  if (mainTitle && briefingType) {
+    return `${briefingType}: ${mainTitle}`;
   }
+
+  if (mainTitle) return mainTitle;
+  if (briefingType) return briefingType;
+  return "Briefing";
 }
 
-function writeArchive(entries: ArchivedBriefing[]) {
-  if (!canUseStorage()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+function buildStoredSubtitle(params: BriefingRequest) {
+  return [
+    params.timeframe || "",
+    ...(params.regions ?? []),
+    ...(params.categories ?? []),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
-function sortArchive(entries: ArchivedBriefing[]) {
-  return [...entries].sort((a, b) => {
-    const aTime = new Date(a.updatedAt).getTime();
-    const bTime = new Date(b.updatedAt).getTime();
-    return bTime - aTime;
-  });
+function mapRowToEntry(row: any): SavedBriefingEntry {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    title: row.title,
+    subtitle: row.subtitle ?? "",
+    language: row.language,
+    briefingType: row.briefing_type,
+    timeframe: row.timeframe ?? "",
+    categories: Array.isArray(row.categories) ? row.categories : [],
+    regions: Array.isArray(row.regions) ? row.regions : [],
+    includeMarketInsights: !!row.include_market_insights,
+    includeChangeAnalysis: !!row.include_change_analysis,
+    briefing: row.briefing_payload as BriefingResult,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
-function makeDefaultName(params: any, language: "de" | "en") {
-  const now = new Date();
-  const formatted = new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-US", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(now);
+export async function saveAutoBriefing(input: SaveBriefingInput) {
+  const nowIso = new Date().toISOString();
 
-  const briefingType = params?.briefingType ?? "Briefing";
-  return `${briefingType} - ${formatted}`;
-}
-
-export function listArchivedBriefings(): ArchivedBriefing[] {
-  return sortArchive(readArchive());
-}
-
-export function saveAutoBriefing(input: {
-  language: "de" | "en";
-  params: any;
-  briefing: any;
-}) {
-  const entries = readArchive();
-  const now = new Date().toISOString();
-
-  const newEntry: ArchivedBriefing = {
-    id: crypto.randomUUID(),
-    name: makeDefaultName(input.params, input.language),
-    createdAt: now,
-    updatedAt: now,
-    autoSaved: true,
+  const insertPayload = {
+    account_id: input.accountId,
+    title: buildStoredTitle(input.params, input.briefing),
+    subtitle: buildStoredSubtitle(input.params),
     language: input.language,
-    params: input.params,
-    briefing: input.briefing,
+    briefing_type: input.params.briefingType,
+    timeframe: input.params.timeframe,
+    categories: input.params.categories ?? [],
+    regions: input.params.regions ?? [],
+    include_market_insights: !!input.params.includeMarketInsights,
+    include_change_analysis: !!input.params.includeChangeAnalysis,
+    briefing_payload: input.briefing,
+    created_at: nowIso,
+    updated_at: nowIso,
   };
 
-  const nextEntries = [newEntry, ...entries];
-  const manualEntries = nextEntries.filter((entry) => !entry.autoSaved);
-  const autoEntries = nextEntries.filter((entry) => entry.autoSaved).slice(0, MAX_AUTO_SAVED);
+  const { data, error } = await supabase
+    .from("saved_briefings")
+    .insert(insertPayload)
+    .select("*")
+    .single();
 
-  writeArchive(sortArchive([...manualEntries, ...autoEntries]));
-  return newEntry;
+  if (error) throw error;
+
+  await trimSavedBriefingsForAccount(input.accountId, 5);
+
+  return mapRowToEntry(data);
 }
 
-export function saveManualBriefing(input: {
-  language: "de" | "en";
-  params: any;
-  briefing: any;
-  name: string;
-}) {
-  const entries = readArchive();
-  const now = new Date().toISOString();
+export async function getSavedBriefingsForAccount(accountId: string) {
+  const { data, error } = await supabase
+    .from("saved_briefings")
+    .select("*")
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: false });
 
-  const newEntry: ArchivedBriefing = {
-    id: crypto.randomUUID(),
-    name: input.name.trim(),
-    createdAt: now,
-    updatedAt: now,
-    autoSaved: false,
-    language: input.language,
-    params: input.params,
-    briefing: input.briefing,
-  };
+  if (error) throw error;
 
-  writeArchive(sortArchive([newEntry, ...entries]));
-  return newEntry;
+  return (data ?? []).map(mapRowToEntry);
 }
 
-export function renameArchivedBriefing(id: string, newName: string) {
-  const entries = readArchive();
-  const trimmedName = newName.trim();
+export async function renameSavedBriefing(entryId: string, title: string) {
+  const cleanedTitle = title.trim();
 
-  const nextEntries = entries.map((entry) =>
-    entry.id === id
-      ? {
-          ...entry,
-          name: trimmedName,
-          updatedAt: new Date().toISOString(),
-        }
-      : entry
-  );
+  const { data, error } = await supabase
+    .from("saved_briefings")
+    .update({
+      title: cleanedTitle,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", entryId)
+    .select("*")
+    .single();
 
-  writeArchive(sortArchive(nextEntries));
+  if (error) throw error;
+  return mapRowToEntry(data);
 }
 
-export function deleteArchivedBriefing(id: string) {
-  const entries = readArchive();
-  const nextEntries = entries.filter((entry) => entry.id !== id);
-  writeArchive(sortArchive(nextEntries));
+export async function deleteSavedBriefing(entryId: string) {
+  const { error } = await supabase
+    .from("saved_briefings")
+    .delete()
+    .eq("id", entryId);
+
+  if (error) throw error;
 }
 
-export function getArchivedBriefing(id: string): ArchivedBriefing | null {
-  const entries = readArchive();
-  return entries.find((entry) => entry.id === id) ?? null;
+export async function getAllSavedBriefings(limit = 100) {
+  const { data, error } = await supabase
+    .from("saved_briefings")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return (data ?? []).map(mapRowToEntry);
+}
+
+async function trimSavedBriefingsForAccount(accountId: string, keepCount: number) {
+  const { data, error } = await supabase
+    .from("saved_briefings")
+    .select("id, created_at")
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  const rows = data ?? [];
+  if (rows.length <= keepCount) return;
+
+  const idsToDelete = rows.slice(keepCount).map((row) => row.id);
+
+  const { error: deleteError } = await supabase
+    .from("saved_briefings")
+    .delete()
+    .in("id", idsToDelete);
+
+  if (deleteError) throw deleteError;
 }

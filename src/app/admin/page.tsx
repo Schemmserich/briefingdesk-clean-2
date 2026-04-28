@@ -9,9 +9,9 @@ import {
   deleteTesterAccountCompletely,
   getAllTesterAccounts,
   getAppErrors,
-  getUsageEvents,
   updateTesterAccountStatus,
 } from "@/lib/db/queries";
+import { getAllSavedBriefings, SavedBriefingEntry } from "@/lib/briefingArchive";
 
 type TesterAccount = {
   id: string;
@@ -24,14 +24,6 @@ type TesterAccount = {
   last_seen_at: string;
 };
 
-type UsageEvent = {
-  id: string;
-  account_id?: string | null;
-  event_type: string;
-  payload: Record<string, any>;
-  created_at: string;
-};
-
 type AppErrorRow = {
   id: string;
   account_id?: string | null;
@@ -42,11 +34,12 @@ type AppErrorRow = {
 
 type AdminTab = "testers" | "briefings" | "errors";
 
-function formatDate(value?: string | null) {
+function formatDate(value?: string | null, language: "de" | "en" = "de") {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("de-DE", {
+
+  return new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -61,29 +54,6 @@ function getStatusLabel(status: TesterAccount["status"]) {
   return "Freigabe ausstehend";
 }
 
-function getUserNameByAccountId(accountId: string | null | undefined, users: TesterAccount[]) {
-  const user = users.find((u) => u.id === accountId);
-  if (!user) return "Unbekannter Nutzer";
-  return `${user.first_name} ${user.last_name}`;
-}
-
-function getReadableErrorTitle(errorMessage: string) {
-  const normalized = errorMessage.toLowerCase();
-  if (normalized.includes("quota")) return "API-Limit erreicht";
-  if (normalized.includes("503") || normalized.includes("high demand")) return "KI derzeit ausgelastet";
-  if (normalized.includes("delete failed")) return "Löschen fehlgeschlagen";
-  if (normalized.includes("briefing")) return "Briefing-Fehler";
-  return "Technischer Fehler";
-}
-
-function getReadableErrorDescription(errorMessage: string) {
-  const normalized = errorMessage.toLowerCase();
-  if (normalized.includes("quota")) return "Das Kontingent der angebundenen API wurde erreicht.";
-  if (normalized.includes("503") || normalized.includes("high demand")) return "Der Dienst war vorübergehend ausgelastet.";
-  if (normalized.includes("delete failed")) return "Der Nutzer oder zugehörige Protokolle konnten nicht vollständig gelöscht werden.";
-  if (normalized.includes("briefing")) return "Bei der Erstellung des Briefings ist ein Fehler aufgetreten.";
-  return "Es ist ein technischer Fehler aufgetreten.";
-}
 function getLastActivityState(lastSeenAt?: string | null) {
   if (!lastSeenAt) {
     return { label: "Keine Aktivität", className: "text-muted-foreground" };
@@ -106,13 +76,52 @@ function getLastActivityState(lastSeenAt?: string | null) {
 
   return { label: "Inaktiv", className: "text-red-300" };
 }
+
+function getUserNameByAccountId(accountId: string | null | undefined, users: TesterAccount[]) {
+  const user = users.find((u) => u.id === accountId);
+  if (!user) return "Unbekannter Nutzer";
+  return `${user.first_name} ${user.last_name}`;
+}
+
+function getReadableErrorTitle(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+
+  if (normalized.includes("quota")) return "API-Limit erreicht";
+  if (normalized.includes("503") || normalized.includes("high demand")) {
+    return "KI derzeit ausgelastet";
+  }
+  if (normalized.includes("delete failed")) return "Löschen fehlgeschlagen";
+  if (normalized.includes("briefing")) return "Briefing-Fehler";
+
+  return "Technischer Fehler";
+}
+
+function getReadableErrorDescription(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+
+  if (normalized.includes("quota")) {
+    return "Das Kontingent der angebundenen API wurde erreicht.";
+  }
+  if (normalized.includes("503") || normalized.includes("high demand")) {
+    return "Der Dienst war vorübergehend ausgelastet.";
+  }
+  if (normalized.includes("delete failed")) {
+    return "Der Nutzer oder zugehörige Protokolle konnten nicht vollständig gelöscht werden.";
+  }
+  if (normalized.includes("briefing")) {
+    return "Bei der Erstellung des Briefings ist ein Fehler aufgetreten.";
+  }
+
+  return "Es ist ein technischer Fehler aufgetreten.";
+}
+
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
   const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [accounts, setAccounts] = useState<TesterAccount[]>([]);
-  const [usageEvents, setUsageEvents] = useState<UsageEvent[]>([]);
+  const [savedBriefings, setSavedBriefings] = useState<SavedBriefingEntry[]>([]);
   const [appErrors, setAppErrors] = useState<AppErrorRow[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -124,14 +133,15 @@ export default function AdminPage() {
   async function loadAllData() {
     try {
       setLoadingAll(true);
-      const [accountsResult, usageResult, errorResult] = await Promise.all([
+
+      const [accountsResult, savedBriefingsResult, errorResult] = await Promise.all([
         getAllTesterAccounts(),
-        getUsageEvents(50),
+        getAllSavedBriefings(100),
         getAppErrors(30),
       ]);
 
       setAccounts(accountsResult as TesterAccount[]);
-      setUsageEvents(usageResult as UsageEvent[]);
+      setSavedBriefings(savedBriefingsResult);
       setAppErrors(errorResult as AppErrorRow[]);
     } catch (error) {
       console.error(error);
@@ -175,7 +185,9 @@ export default function AdminPage() {
 
       const response = await fetch("/api/admin-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ passcode }),
       });
 
@@ -195,9 +207,10 @@ export default function AdminPage() {
 
   async function handleLogout() {
     await fetch("/api/admin-logout", { method: "POST" });
+
     setAuthorized(false);
     setAccounts([]);
-    setUsageEvents([]);
+    setSavedBriefings([]);
     setAppErrors([]);
     setStatusMessage("");
   }
@@ -216,6 +229,7 @@ export default function AdminPage() {
       });
 
       await loadAllData();
+
       setStatusMessage(
         `${account.first_name} ${account.last_name} wurde auf "${getStatusLabel(nextStatus)}" gesetzt.`
       );
@@ -249,10 +263,20 @@ export default function AdminPage() {
     }
   }
 
-  const briefingEvents = useMemo(
-    () => usageEvents.filter((e) => e.event_type === "briefing_generated"),
-    [usageEvents]
-  );
+  const stats = useMemo(() => {
+    const approved = accounts.filter((u) => u.status === "approved").length;
+    const pending = accounts.filter((u) => u.status === "pending").length;
+    const blocked = accounts.filter((u) => u.status === "blocked").length;
+
+    return {
+      approved,
+      pending,
+      blocked,
+      total: accounts.length,
+      briefingCount: savedBriefings.length,
+      errorCount: appErrors.length,
+    };
+  }, [accounts, savedBriefings, appErrors]);
 
   if (checking) {
     return (
@@ -343,6 +367,50 @@ export default function AdminPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Tester gesamt
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.total}</div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-emerald-300">
+                Freigegeben
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.approved}</div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-amber-300">
+                Ausstehend
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.pending}</div>
+            </div>
+
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-red-300">
+                Gesperrt
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.blocked}</div>
+            </div>
+
+            <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-blue-300">
+                Briefings
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.briefingCount}</div>
+            </div>
+
+            <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-rose-300">
+                Fehler
+              </div>
+              <div className="mt-2 text-2xl font-bold text-white">{stats.errorCount}</div>
+            </div>
+          </div>
+
           {statusMessage && (
             <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-white">
               {statusMessage}
@@ -414,7 +482,7 @@ export default function AdminPage() {
                             <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                               Aktivität
                             </div>
-                            <div className="mt-2 text-sm font-medium text-white">
+                            <div className={`mt-2 text-sm font-medium ${getLastActivityState(account.last_seen_at).className}`}>
                               {getLastActivityState(account.last_seen_at).label}
                             </div>
                           </div>
@@ -501,53 +569,93 @@ export default function AdminPage() {
 
               {activeTab === "briefings" && (
                 <div className="grid grid-cols-1 gap-3">
-                  {briefingEvents.length === 0 ? (
+                  {savedBriefings.length === 0 ? (
                     <div className="rounded-xl border border-white/10 bg-card/30 p-6 text-muted-foreground">
-                      Noch keine Briefing-Generierungen protokolliert.
+                      Noch keine gespeicherten Briefings vorhanden.
                     </div>
                   ) : (
-                    briefingEvents.map((event) => (
-                      <Card key={event.id} className="briefing-card">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div className="space-y-1">
-                              <div className="text-base font-semibold text-white">
-                                {getUserNameByAccountId(event.account_id, accounts)}
+                    savedBriefings.map((entry) => {
+                      const language = entry.language === "en" ? "en" : "de";
+
+                      return (
+                        <Card key={entry.id} className="briefing-card">
+                          <CardContent className="p-4 space-y-4">
+                            <div className="flex items-start justify-between gap-4 flex-wrap">
+                              <div className="space-y-1">
+                                <div className="text-base font-semibold text-white">
+                                  {getUserNameByAccountId(entry.accountId, accounts)}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {entry.title}
+                                </div>
                               </div>
+
                               <div className="text-sm text-muted-foreground">
-                                Briefing erstellt
+                                {formatDate(entry.createdAt, language)}
                               </div>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {formatDate(event.created_at)}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm">
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Ausgabeformat
-                              </div>
-                              <div className="mt-2 text-white">{event.payload?.briefingType ?? "—"}</div>
                             </div>
 
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Zeitfenster
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm">
+                              <div className="rounded-xl bg-white/[0.03] p-3">
+                                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                  Ausgabeformat
+                                </div>
+                                <div className="mt-2 text-white">
+                                  {entry.briefingType || "—"}
+                                </div>
                               </div>
-                              <div className="mt-2 text-white">{event.payload?.timeframe ?? "—"}</div>
+
+                              <div className="rounded-xl bg-white/[0.03] p-3">
+                                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                  Zeitfenster
+                                </div>
+                                <div className="mt-2 text-white">
+                                  {entry.timeframe || "—"}
+                                </div>
+                              </div>
+
+                              <div className="rounded-xl bg-white/[0.03] p-3">
+                                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                  Sprache
+                                </div>
+                                <div className="mt-2 text-white">
+                                  {entry.language}
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                                Sprache
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-xl bg-white/[0.03] p-3">
+                                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                  Kategorien
+                                </div>
+                                <div className="mt-2 text-white">
+                                  {entry.categories.length > 0 ? entry.categories.join(", ") : "—"}
+                                </div>
                               </div>
-                              <div className="mt-2 text-white">{event.payload?.language ?? "—"}</div>
+
+                              <div className="rounded-xl bg-white/[0.03] p-3">
+                                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                  Regionen
+                                </div>
+                                <div className="mt-2 text-white">
+                                  {entry.regions.length > 0 ? entry.regions.join(", ") : "—"}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+
+                            <div className="rounded-xl bg-white/[0.03] p-3 text-sm">
+                              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                                Untertitel
+                              </div>
+                              <div className="mt-2 text-white">
+                                {entry.subtitle || "—"}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
               )}

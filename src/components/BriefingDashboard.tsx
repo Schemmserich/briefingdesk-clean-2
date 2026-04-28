@@ -513,11 +513,14 @@ export function BriefingDashboard() {
       const briefingData = response.data as BriefingResult;
       setResult(briefingData);
 
-      saveAutoBriefing({
-        language: lang,
-        params: payload,
-        briefing: briefingData,
-      });
+      if (accountId) {
+  await saveAutoBriefing({
+    accountId,
+    language: lang,
+    params: payload,
+    briefing: briefingData,
+  });
+}
 
       if (accountId) {
         await logUsageEvent({
