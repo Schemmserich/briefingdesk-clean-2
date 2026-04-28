@@ -23,19 +23,19 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
-    const deviceId = cookieStore.get("newsbriefing_device_id")?.value;
+    const accountId = cookieStore.get("newsbriefing_account_id")?.value;
 
-    if (!deviceId) {
+    if (!accountId) {
       return NextResponse.json(
-        { success: false, error: "No device ID found." },
+        { success: false, error: "No account ID found." },
         { status: 401 }
       );
     }
 
     const { data: currentUser, error } = await supabase
-      .from("test_users")
+      .from("tester_accounts")
       .select("*")
-      .eq("device_id", deviceId)
+      .eq("id", accountId)
       .maybeSingle();
 
     if (error || !currentUser) {
@@ -45,11 +45,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const adminNameMatched =
-      String(currentUser.first_name ?? "").trim().toLowerCase() === "florian" &&
-      String(currentUser.last_name ?? "").trim().toLowerCase() === "schemm";
-
-    const isAllowedAdmin = adminNameMatched && currentUser.is_admin === true;
+    const isAllowedAdmin =
+      currentUser.is_admin === true && currentUser.status === "approved";
 
     if (!isAllowedAdmin) {
       return NextResponse.json(

@@ -18,10 +18,17 @@ export function Navigation() {
   const [showAdmin, setShowAdmin] = useState(false);
 
   useEffect(() => {
-    async function checkAdminSession() {
+    async function checkAdminEligibility() {
       try {
         getOrCreateDeviceId();
-        getCurrentTesterAccountId();
+        const accountId = getCurrentTesterAccountId();
+
+        if (!accountId) {
+          setShowAdmin(false);
+          return;
+        }
+
+        document.cookie = `newsbriefing_account_id=${accountId}; path=/; SameSite=Lax`;
 
         const response = await fetch("/api/admin-session", {
           method: "GET",
@@ -35,7 +42,7 @@ export function Navigation() {
       }
     }
 
-    checkAdminSession();
+    checkAdminEligibility();
   }, [pathname]);
 
   const navItems: NavItem[] = [
