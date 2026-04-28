@@ -34,6 +34,10 @@ function detectLanguageFromEntry(entry: SavedBriefingEntry): Language {
   return entry.language === "en" ? "en" : "de";
 }
 
+function buildMetaLine(entry: SavedBriefingEntry, language: Language) {
+  return `${formatDate(entry.updatedAt, language)} · ${entry.briefingType || "Briefing"}`;
+}
+
 export default function HistoryPage() {
   const [entries, setEntries] = useState<SavedBriefingEntry[]>([]);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -161,8 +165,7 @@ export default function HistoryPage() {
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Archiv</h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-6">
-            Öffnen, umbenennen, exportieren und verwalten deiner gespeicherten Briefings.
-            Die letzten 5 generierten Briefings werden automatisch gespeichert.
+            Die letzten 5 gespeicherten Briefings werden synchron zwischen Browser und App angezeigt.
           </p>
         </div>
 
@@ -196,81 +199,83 @@ export default function HistoryPage() {
                     }`}
                   >
                     <CardContent className="p-4 space-y-4">
-                      <div className="space-y-2">
-                        {isRenaming ? (
-                          <div className="space-y-2">
-                            <input
-                              value={renameValue}
-                              onChange={(e) => setRenameValue(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-primary"
-                              placeholder="Titel eingeben"
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                className="h-9"
-                                onClick={() => saveRename(entry)}
-                              >
-                                Speichern
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="h-9 border-white/10"
-                                onClick={cancelRename}
-                              >
-                                Abbrechen
-                              </Button>
-                            </div>
+                      {isRenaming ? (
+                        <div className="space-y-2">
+                          <input
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white outline-none focus:border-primary"
+                            placeholder="Titel eingeben"
+                          />
+                          <div className="flex gap-2">
+                            <Button className="h-9" onClick={() => saveRename(entry)}>
+                              Speichern
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-9 border-white/10"
+                              onClick={cancelRename}
+                            >
+                              Abbrechen
+                            </Button>
                           </div>
-                        ) : (
-                          <>
-                            <h2 className="text-lg font-semibold text-white leading-6">
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <h2 className="text-base sm:text-lg font-semibold text-white leading-6 line-clamp-2">
                               {entry.title}
                             </h2>
-                            <div className="text-sm text-muted-foreground">
-                              {formatDate(entry.updatedAt, entryLanguage)}
+
+                            {entry.subtitle && (
+                              <p className="text-sm text-muted-foreground leading-5 line-clamp-2">
+                                {entry.subtitle}
+                              </p>
+                            )}
+
+                            <div className="text-xs text-muted-foreground">
+                              {buildMetaLine(entry, entryLanguage)}
                             </div>
-                          </>
-                        )}
-                      </div>
+                          </div>
 
-                      {!isRenaming && (
-                        <div className="flex gap-2 flex-wrap">
-                          <Button
-                            variant={isSelected ? "default" : "outline"}
-                            className="h-10 border-white/10"
-                            onClick={() => setSelectedEntryId(entry.id)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Öffnen
-                          </Button>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              variant={isSelected ? "default" : "outline"}
+                              className="h-10 border-white/10"
+                              onClick={() => setSelectedEntryId(entry.id)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Öffnen
+                            </Button>
 
-                          <Button
-                            variant="outline"
-                            className="h-10 border-white/10"
-                            onClick={() => handleExportPdf(entry)}
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            PDF
-                          </Button>
+                            <Button
+                              variant="outline"
+                              className="h-10 border-white/10"
+                              onClick={() => handleExportPdf(entry)}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              PDF
+                            </Button>
 
-                          <Button
-                            variant="outline"
-                            className="h-10 border-white/10"
-                            onClick={() => startRename(entry)}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Umbenennen
-                          </Button>
+                            <Button
+                              variant="outline"
+                              className="h-10 border-white/10"
+                              onClick={() => startRename(entry)}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Umbenennen
+                            </Button>
 
-                          <Button
-                            variant="outline"
-                            className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
-                            onClick={() => handleDelete(entry)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Löschen
-                          </Button>
-                        </div>
+                            <Button
+                              variant="outline"
+                              className="h-10 border-red-400/20 text-red-300 hover:bg-red-500/10"
+                              onClick={() => handleDelete(entry)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Löschen
+                            </Button>
+                          </div>
+                        </>
                       )}
                     </CardContent>
                   </Card>

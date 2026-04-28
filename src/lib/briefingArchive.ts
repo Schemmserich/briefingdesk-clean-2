@@ -94,7 +94,7 @@ export async function saveAutoBriefing(input: SaveBriefingInput) {
 
   if (error) throw error;
 
-  await trimSavedBriefingsForAccount(input.accountId, 5);
+  await trimSavedBriefingsForAccount(input.accountId, 6);
 
   return mapRowToEntry(data);
 }
