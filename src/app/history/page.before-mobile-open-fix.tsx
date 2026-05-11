@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { BriefingDisplay } from "@/components/BriefingDisplay";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,6 @@ export default function HistoryPage() {
   const [renameEntryId, setRenameEntryId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
-  const selectedDetailRef = useRef<HTMLDivElement | null>(null);
 
   async function loadArchive() {
     try {
@@ -114,18 +113,6 @@ export default function HistoryPage() {
   function cancelRename() {
     setRenameEntryId(null);
     setRenameValue("");
-  }
-
-  function handleOpenEntry(entry: SavedBriefingEntry) {
-    setSelectedEntryId(entry.id);
-    setStatusMessage("");
-
-    window.setTimeout(() => {
-      selectedDetailRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 80);
   }
 
   async function saveRename(entry: SavedBriefingEntry) {
@@ -251,12 +238,8 @@ export default function HistoryPage() {
                             <div className="flex gap-2 flex-wrap">
                               <Button
                                 variant={isSelected ? "default" : "outline"}
-                                className="relative z-10 h-11 min-h-11 border-white/10 touch-manipulation"
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  handleOpenEntry(entry);
-                                }}
+                                className="h-10 border-white/10"
+                                onClick={() => setSelectedEntryId(entry.id)}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Öffnen
@@ -297,7 +280,7 @@ export default function HistoryPage() {
                 })}
               </div>
 
-              <div ref={selectedDetailRef} className="lg:col-span-8 min-w-0 scroll-mt-24">
+              <div className="lg:col-span-8 min-w-0">
                 {selectedEntry ? (
                   <BriefingDisplay
                     briefing={selectedEntry.briefing as BriefingResult}
