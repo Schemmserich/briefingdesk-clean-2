@@ -15,11 +15,6 @@ import { saveAutoBriefing } from "@/lib/briefingArchive";
 import { getCurrentTesterAccountId } from "@/lib/testerIdentity";
 import { logAppError, logUsageEvent } from "@/lib/db/queries";
 import {
-  DEFAULT_BRIEFING_FILTERS,
-  loadBriefingFilterPreferences,
-  saveBriefingFilterPreferences,
-} from "@/lib/briefingFilterPreferences";
-import {
   Loader2,
   Zap,
   Calendar,
@@ -88,16 +83,6 @@ type ValidationState = {
   regions: boolean;
   categories: boolean;
   briefingType: boolean;
-};
-
-const DEFAULT_DASHBOARD_PARAMS: DashboardParams = {
-  language: DEFAULT_BRIEFING_FILTERS.language,
-  timeframe: DEFAULT_BRIEFING_FILTERS.timeframe,
-  categories: DEFAULT_BRIEFING_FILTERS.categories,
-  regions: DEFAULT_BRIEFING_FILTERS.regions,
-  briefingType: DEFAULT_BRIEFING_FILTERS.briefingType,
-  includeMarketInsights: DEFAULT_BRIEFING_FILTERS.includeMarketInsights,
-  includeChangeAnalysis: DEFAULT_BRIEFING_FILTERS.includeChangeAnalysis,
 };
 
 type FilterPanelProps = {
@@ -408,37 +393,23 @@ export function BriefingDashboard() {
   const [result, setResult] = useState<BriefingResult | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
-  const [filtersLoaded, setFiltersLoaded] = useState(false);
   const { toast } = useToast();
 
-  const [params, setParams] = useState<DashboardParams>(DEFAULT_DASHBOARD_PARAMS);
+  const [params, setParams] = useState<DashboardParams>({
+    language: "de",
+    timeframe: "",
+    categories: [],
+    regions: [],
+    briefingType: "",
+    includeMarketInsights: true,
+    includeChangeAnalysis: true,
+  });
 
   const t = i18n[lang];
 
   useEffect(() => {
     document.title = "News Briefing";
   }, []);
-
-  useEffect(() => {
-    const savedFilters = loadBriefingFilterPreferences(DEFAULT_BRIEFING_FILTERS);
-    const { schemaVersion, ...savedParams } = savedFilters;
-
-    setParams(savedParams);
-    setLang(savedParams.language);
-    setFiltersLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (!filtersLoaded) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      saveBriefingFilterPreferences(params);
-    }, 300);
-
-    return () => window.clearTimeout(timeout);
-  }, [params, filtersLoaded]);
 
   function validateParams(currentParams: DashboardParams): ValidationState {
     return {

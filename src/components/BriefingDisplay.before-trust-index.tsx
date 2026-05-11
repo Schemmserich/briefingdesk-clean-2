@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BriefingAudioPlayer } from "@/components/BriefingAudioPlayer";
-import { TrustIndexInfoButton } from "@/components/TrustIndexInfoButton";
 import { i18n } from "@/lib/i18n";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -411,13 +410,19 @@ export function BriefingDisplay({
           </div>
 
           <div className="self-start w-full xl:w-auto">
-            <TrustIndexInfoButton
-              score={briefing.confidenceScore}
-              language={language}
-              sourceCount={briefing.sourceCount}
-              articleCount={briefing.articleCount}
-              displayLabel={language === "de" ? "Vertrauensindex" : t.confidenceScore}
-            />
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 w-full xl:min-w-[170px]">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-400" />
+                <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                  {t.confidenceScore}
+                </span>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-white">
+                {typeof briefing.confidenceScore === "number"
+                  ? `${briefing.confidenceScore}%`
+                  : "—"}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -574,12 +579,6 @@ export function BriefingDisplay({
               {language === "de" ? "Quellenfenster:" : "Source window:"}
             </span>{" "}
             {formatWindow(briefing.sourceWindowStart, briefing.sourceWindowEnd, language)}
-          </p>
-
-          <p className="leading-6">
-            {language === "de"
-              ? "Der Vertrauensindex bewertet die Belastbarkeit der verwendeten Quellenbasis. Details zur Berechnung und Quellenlogik erhältst du per Klick auf den Vertrauensindex oben."
-              : "The confidence score assesses the robustness of the underlying source base. Click the confidence score above for details on the scoring and source logic."}
           </p>
         </CardContent>
       </Card>

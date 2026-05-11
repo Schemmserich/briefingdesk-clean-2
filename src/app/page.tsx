@@ -1,3 +1,11 @@
+import {
+  DEFAULT_BRIEFING_FILTERS,
+  loadBriefingFilterPreferences,
+  saveBriefingFilterPreferences,
+  type BriefingFilterPreferences,
+} from "@/lib/briefingFilterPreferences";
+
+
 import { Navigation } from "@/components/Navigation";
 import { BriefingDashboard } from "@/components/BriefingDashboard";
 import { TesterAccessGate } from "@/components/TesterAccessGate";
