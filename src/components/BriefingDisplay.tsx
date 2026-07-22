@@ -333,8 +333,24 @@ function buildFullText(briefing: BriefingDisplayData) {
   return parts.join("\n\n");
 }
 
-function deriveHeadline(briefing: BriefingDisplayData, fallbackTitle?: string) {
+function getBriefingTypeLabel(type: string, language: Language) {
+  const labels: Record<string, Record<Language, string>> = {
+    "Ultra Short Update": { de: "Extra kurz", en: "Extra Short" },
+    "Short Update": { de: "Kurz-Update", en: "Short Update" },
+    "Morning Briefing": { de: "Morning Briefing", en: "Morning Briefing" },
+    "Executive Summary": { de: "Executive Summary", en: "Executive Summary" },
+  };
+
+  return labels[type]?.[language] ?? type;
+}
+
+function deriveHeadline(
+  briefing: BriefingDisplayData,
+  language: Language,
+  fallbackTitle?: string
+) {
   const briefingType = safeText(briefing.briefingType);
+  const briefingTypeLabel = getBriefingTypeLabel(briefingType, language);
   const mainTitle = safeText(briefing.mainTitle);
   const overview = safeText(briefing.overviewParagraph);
   const fallback = safeText(fallbackTitle);
@@ -353,11 +369,19 @@ function deriveHeadline(briefing: BriefingDisplayData, fallbackTitle?: string) {
     derivedTitle = fallback;
   }
 
-  if (briefingType && derivedTitle) {
-    return `${briefingType}: ${derivedTitle}`;
+  const normalizedType = briefingTypeLabel.toLowerCase();
+  const normalizedTitle = derivedTitle.toLowerCase();
+
+  if (
+    briefingTypeLabel &&
+    derivedTitle &&
+    normalizedTitle !== normalizedType &&
+    !normalizedTitle.startsWith(`${normalizedType}:`)
+  ) {
+    return `${briefingTypeLabel}: ${derivedTitle}`;
   }
 
-  return derivedTitle || briefingType || fallback;
+  return derivedTitle || briefingTypeLabel || fallback;
 }
 
 export function BriefingDisplay({
@@ -373,8 +397,8 @@ export function BriefingDisplay({
 
   const fullText = useMemo(() => buildFullText(briefing), [briefing]);
   const headline = useMemo(
-    () => deriveHeadline(briefing, fallbackTitle),
-    [briefing, fallbackTitle]
+    () => deriveHeadline(briefing, language, fallbackTitle),
+    [briefing, language, fallbackTitle]
   );
 
   return (

@@ -43,7 +43,8 @@ export async function getFilteredArticles(input: {
       )
     `)
     .gte("publication_date", cutoff)
-    .order("publication_date", { ascending: false });
+    .order("publication_date", { ascending: false })
+    .limit(200);
 
   if (input.categories?.length) {
     query = query.in("category", input.categories);
@@ -89,16 +90,28 @@ export async function getTesterAccountById(accountId: string) {
   return data;
 }
 
-export async function getTesterAccountByName(firstName: string, lastName: string) {
+export async function getTesterAccountsByName(firstName: string, lastName: string) {
   const { data, error } = await supabase
     .from("tester_accounts")
     .select("*")
     .ilike("first_name", firstName.trim())
     .ilike("last_name", lastName.trim())
-    .maybeSingle();
+    .limit(2);
 
   if (error) throw error;
-  return data;
+  return data ?? [];
+}
+
+export async function getTesterAccountByName(firstName: string, lastName: string) {
+  const matches = await getTesterAccountsByName(firstName, lastName);
+
+  if (matches.length > 1) {
+    const error = new Error("DUPLICATE_TESTER_NAME") as Error & { code?: string };
+    error.code = "DUPLICATE_TESTER_NAME";
+    throw error;
+  }
+
+  return matches[0] ?? null;
 }
 
 export async function registerOrLoginTesterAccount(input: {
@@ -108,20 +121,19 @@ export async function registerOrLoginTesterAccount(input: {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
 
+  if (!firstName || !lastName) {
+    throw new Error("INVALID_TESTER_NAME");
+  }
+
   const existing = await getTesterAccountByName(firstName, lastName);
 
   if (existing) {
-    const { data, error } = await supabase
-      .from("tester_accounts")
-      .update({
-        last_seen_at: new Date().toISOString(),
-      })
-      .eq("id", existing.id)
-      .select("*")
-      .single();
-
-    if (error) throw error;
-    return data;
+    // A blocked UPDATE policy must never prevent a valid existing account
+    // from being loaded. last_seen_at is telemetry, not authentication.
+    void touchTesterAccountLastSeen(existing.id).catch((error) => {
+      console.warn("Could not update tester last_seen_at:", error);
+    });
+    return existing;
   }
 
   const { data, error } = await supabase
@@ -131,7 +143,7 @@ export async function registerOrLoginTesterAccount(input: {
       last_name: lastName,
       pin_hash: "__NO_PIN__",
       status: "pending",
-      is_admin: firstName.toLowerCase() === "florian" && lastName.toLowerCase() === "schemm",
+      is_admin: false,
       last_seen_at: new Date().toISOString(),
     })
     .select("*")

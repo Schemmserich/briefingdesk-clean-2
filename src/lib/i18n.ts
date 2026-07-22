@@ -1,6 +1,6 @@
 export const i18n = {
   en: {
-    appName: 'BriefingDesk',
+    appName: 'News Briefing',
     dashboard: 'Dashboard',
     admin: 'Sources',
     history: 'History',
@@ -34,14 +34,14 @@ export const i18n = {
       '24h': '24 Hours',
     },
     briefingTypes: {
-      ultra: 'Ultra Short Update',
+      ultra: 'Extra Short',
       short: 'Short Update',
       morning: 'Morning Briefing',
       executive: 'Executive Summary',
     }
   },
   de: {
-    appName: 'BriefingDesk',
+    appName: 'News Briefing',
     dashboard: 'Dashboard',
     admin: 'Quellen',
     history: 'Verlauf',
@@ -75,8 +75,8 @@ export const i18n = {
       '24h': '24 Stunden',
     },
     briefingTypes: {
-      ultra: 'Ultra Short Update',
-      short: 'Short Update',
+      ultra: 'Extra kurz',
+      short: 'Kurz-Update',
       morning: 'Morning Briefing',
       executive: 'Executive Summary',
     }

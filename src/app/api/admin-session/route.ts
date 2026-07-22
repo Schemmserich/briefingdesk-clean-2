@@ -1,28 +1,25 @@
-import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { supabase } from "@/lib/db/client";
+import { NextResponse } from "next/server";
+import { getVerifiedTesterAccount } from "@/lib/serverAccess";
+
+export const dynamic = "force-dynamic";
+
+function response(body: Record<string, unknown>) {
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      Pragma: "no-cache",
+    },
+  });
+}
 
 export async function GET() {
   const cookieStore = await cookies();
   const adminCookie = cookieStore.get("newsbriefing_admin")?.value;
-  const accountId = cookieStore.get("newsbriefing_account_id")?.value;
+  const currentUser = await getVerifiedTesterAccount();
 
-  if (!accountId) {
-    return NextResponse.json({
-      authorized: false,
-      isEligibleAdmin: false,
-      hasAccount: false,
-    });
-  }
-
-  const { data: currentUser, error } = await supabase
-    .from("tester_accounts")
-    .select("*")
-    .eq("id", accountId)
-    .maybeSingle();
-
-  if (error || !currentUser) {
-    return NextResponse.json({
+  if (!currentUser) {
+    return response({
       authorized: false,
       isEligibleAdmin: false,
       hasAccount: false,
@@ -32,7 +29,7 @@ export async function GET() {
   const isEligibleAdmin =
     currentUser.is_admin === true && currentUser.status === "approved";
 
-  return NextResponse.json({
+  return response({
     authorized: adminCookie === "true" && isEligibleAdmin,
     isEligibleAdmin,
     hasAccount: true,

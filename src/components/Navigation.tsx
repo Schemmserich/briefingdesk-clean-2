@@ -28,7 +28,6 @@ export function Navigation() {
           return;
         }
 
-        document.cookie = `newsbriefing_account_id=${accountId}; path=/; SameSite=Lax`;
 
         const response = await fetch("/api/admin-session", {
           method: "GET",

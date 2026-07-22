@@ -3,7 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "BriefingDesk | Intelligent News Curation",
+  title: "News Briefing | Intelligent News Curation",
   description: "AI-powered professional news briefing platform.",
   manifest: "/manifest.json",
   icons: {

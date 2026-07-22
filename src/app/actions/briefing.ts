@@ -1,49 +1,57 @@
 "use server";
 
-import { getFilteredArticles } from "@/lib/db/queries";
 import { generateCuratedBriefing } from "@/ai/flows/generate-curated-briefing";
 import { buildFallbackBriefing } from "@/lib/fallbackBriefing";
+import { improveBriefingQuality } from "@/lib/briefingQuality";
 import { dedupBriefingArticles } from "@/lib/dedupBriefingArticles";
+import { getFilteredArticles } from "@/lib/db/queries";
+import { requireApprovedTesterAccount } from "@/lib/serverAccess";
+import type { BriefingRequest, BriefingResult, BriefingType } from "@/lib/types";
+
+const ARTICLE_TARGETS: Record<BriefingType, number> = {
+  "Ultra Short Update": 4,
+  "Short Update": 6,
+  "Morning Briefing": 10,
+  "Executive Summary": 12,
+};
 
 function toPlainObject<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
 function buildSourceMeta(articles: any[]) {
-  const sortedByDate = [...articles].sort((a, b) => {
-    const aTime = new Date(a.publicationDate).getTime();
-    const bTime = new Date(b.publicationDate).getTime();
-    return aTime - bTime;
-  });
-
-  const sourceWindowStart = sortedByDate[0]?.publicationDate ?? null;
-  const sourceWindowEnd =
-    sortedByDate[sortedByDate.length - 1]?.publicationDate ?? null;
+  const sortedByDate = [...articles].sort(
+    (a, b) =>
+      new Date(a.publicationDate).getTime() -
+      new Date(b.publicationDate).getTime()
+  );
 
   const sourceNames = new Set(
     articles.map((article) => article.sourceName).filter(Boolean)
   );
 
-  const usedSources = articles.map((article) => ({
-    id: article.id,
-    sourceName: article.sourceName,
-    title: article.title,
-    url: article.url,
-    publicationDate: article.publicationDate,
-    category: article.category,
-    region: article.region,
-  }));
-
   return {
     articleCount: articles.length,
     sourceCount: sourceNames.size,
-    sourceWindowStart,
-    sourceWindowEnd,
-    usedSources,
+    sourceWindowStart: sortedByDate[0]?.publicationDate ?? null,
+    sourceWindowEnd:
+      sortedByDate[sortedByDate.length - 1]?.publicationDate ?? null,
+    usedSources: articles.map((article) => ({
+      id: article.id,
+      sourceName: article.sourceName,
+      title: article.title,
+      url: article.url,
+      publicationDate: article.publicationDate,
+      category: article.category,
+      region: article.region,
+      trustScore: article.trustScore,
+    })),
   };
 }
 
-function localizeBriefingInput(input: any) {
+function localizeBriefingInput(input: BriefingRequest): BriefingRequest {
+  if (input.language !== "de") return input;
+
   const categoryMap: Record<string, string> = {
     Politics: "Politik",
     Economy: "Wirtschaft",
@@ -62,63 +70,112 @@ function localizeBriefingInput(input: any) {
     "ME&A": "Nahost, Afrika",
   };
 
-  if (input.language !== "de") {
-    return input;
-  }
-
   return {
     ...input,
-    categories: (input.categories ?? []).map((cat: string) => categoryMap[cat] ?? cat),
-    regions: (input.regions ?? []).map((reg: string) => regionMap[reg] ?? reg),
+    categories: input.categories.map((value) => categoryMap[value] ?? value),
+    regions: input.regions.map((value) => regionMap[value] ?? value),
   };
 }
 
-function limitPerSource(articles: any[], maxPerSource: number) {
-  const selected: any[] = [];
-  const sourceCounter = new Map<string, number>();
-
-  for (const article of articles) {
-    const sourceName = article.sourceName ?? "Unknown Source";
-    const currentCount = sourceCounter.get(sourceName) ?? 0;
-
-    if (currentCount >= maxPerSource) {
-      continue;
-    }
-
-    selected.push(article);
-    sourceCounter.set(sourceName, currentCount + 1);
-  }
-
-  return selected;
+function prepareArticleForAi(article: any) {
+  return {
+    ...article,
+    title: String(article.title ?? "").trim(),
+    summary: String(article.summary ?? "").trim().slice(0, 900),
+    content: String(article.content ?? "").trim().slice(0, 3_500),
+  };
 }
 
-export async function generateCuratedBriefingAction(input: any) {
+function selectDiverseArticles(articles: any[], targetCount: number) {
+  const selected: any[] = [];
+  const selectedIds = new Set<string>();
+  const sourceCounts = new Map<string, number>();
+  const categoryCounts = new Map<string, number>();
+
+  const add = (article: any) => {
+    const key = String(article.id ?? article.url ?? article.title);
+    if (selectedIds.has(key)) return false;
+
+    selected.push(article);
+    selectedIds.add(key);
+
+    const source = String(article.sourceName ?? "Unknown Source");
+    const category = String(article.category ?? "General");
+    sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1);
+    categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+    return true;
+  };
+
+  const passes = [
+    { maxPerSource: 1, maxPerCategory: 1 },
+    { maxPerSource: 2, maxPerCategory: 3 },
+    { maxPerSource: 3, maxPerCategory: Number.POSITIVE_INFINITY },
+  ];
+
+  for (const pass of passes) {
+    for (const article of articles) {
+      if (selected.length >= targetCount) break;
+
+      const source = String(article.sourceName ?? "Unknown Source");
+      const category = String(article.category ?? "General");
+
+      if ((sourceCounts.get(source) ?? 0) >= pass.maxPerSource) continue;
+      if ((categoryCounts.get(category) ?? 0) >= pass.maxPerCategory) continue;
+
+      add(article);
+    }
+
+    if (selected.length >= targetCount) break;
+  }
+
+  return selected.slice(0, targetCount).map(prepareArticleForAi);
+}
+
+function validateRequest(input: BriefingRequest) {
+  const allowedTypes = new Set<BriefingType>([
+    "Ultra Short Update",
+    "Short Update",
+    "Morning Briefing",
+    "Executive Summary",
+  ]);
+
+  return (
+    (input.language === "de" || input.language === "en") &&
+    allowedTypes.has(input.briefingType) &&
+    Boolean(input.timeframe) &&
+    Array.isArray(input.categories) &&
+    input.categories.length > 0 &&
+    Array.isArray(input.regions) &&
+    input.regions.length > 0
+  );
+}
+
+export async function generateCuratedBriefingAction(input: BriefingRequest) {
   try {
+    await requireApprovedTesterAccount();
+
+    if (!validateRequest(input)) {
+      return {
+        success: false,
+        data: null,
+        error:
+          input.language === "en"
+            ? "The briefing settings are incomplete or invalid."
+            : "Die Briefing-Einstellungen sind unvollständig oder ungültig.",
+      };
+    }
+
     const filteredArticles = await getFilteredArticles({
-      timeframe: input.timeframe ?? "24h",
-      categories: input.categories ?? [],
-      regions: input.regions ?? [],
+      timeframe: input.timeframe,
+      categories: input.categories,
+      regions: input.regions,
     });
 
-    console.log("ACTION FILTERED ARTICLES RAW:", filteredArticles.length);
-
-    const perSourceLimited = limitPerSource(filteredArticles, 4);
-    console.log("ACTION AFTER SOURCE LIMIT:", perSourceLimited.length);
-
-    const dedupedArticles = dedupBriefingArticles(perSourceLimited);
-    console.log("ACTION AFTER DEDUPE:", dedupedArticles.length);
-
-    const articlesForBriefing = dedupedArticles.slice(0, 10);
-
-    console.log(
-      "ACTION FINAL TITLES:",
-      articlesForBriefing.map((a) => ({
-        title: a.title,
-        publicationDate: a.publicationDate,
-        sourceName: a.sourceName,
-        category: a.category,
-        region: a.region,
-      }))
+    const dedupedArticles = dedupBriefingArticles(filteredArticles);
+    const targetCount = ARTICLE_TARGETS[input.briefingType];
+    const articlesForBriefing = selectDiverseArticles(
+      dedupedArticles,
+      targetCount
     );
 
     if (!articlesForBriefing.length) {
@@ -127,65 +184,62 @@ export async function generateCuratedBriefingAction(input: any) {
         data: null,
         error:
           input.language === "de"
-            ? "Für die gewählten Filter und das gewählte Zeitfenster wurden keine passenden Artikel gefunden. Bitte erweitere das Zeitfenster oder passe die Kategorien und Regionen an."
-            : "No matching articles were found for the selected filters and timeframe. Please widen the timeframe or adjust categories and regions.",
+            ? "Für die gewählten Filter und das Zeitfenster wurden keine passenden Artikel gefunden. Bitte erweitere das Zeitfenster oder passe Kategorien und Regionen an."
+            : "No matching articles were found. Please widen the timeframe or adjust categories and regions.",
       };
     }
 
     const sourceMeta = buildSourceMeta(articlesForBriefing);
+    let rawResult: BriefingResult;
+    let generationMode: "ai" | "fallback" = "ai";
 
     try {
       const localizedInput = localizeBriefingInput(input);
-
-      const result = await generateCuratedBriefing({
+      rawResult = await generateCuratedBriefing({
         ...localizedInput,
         articles: articlesForBriefing,
       });
-
-      const finalResult = {
-        ...toPlainObject(result),
-        ...sourceMeta,
-        debugVersion: "ACTION_V3_LIVE_DEDUPED",
-      };
-
-      console.log("ACTION RETURNING AI RESULT:", finalResult);
-
-      return {
-        success: true,
-        data: finalResult,
-        error: null,
-      };
-    } catch (aiError: any) {
-      console.error("AI briefing failed, using fallback briefing:", aiError);
-
-      const fallbackResult = buildFallbackBriefing(
-        input,
-        articlesForBriefing
-      );
-
-      const finalFallback = {
-        ...fallbackResult,
-        ...sourceMeta,
-        debugVersion: "ACTION_V3_FALLBACK_DEDUPED",
-      };
-
-      console.log("ACTION RETURNING FALLBACK RESULT:", finalFallback);
-
-      return {
-        success: true,
-        data: finalFallback,
-        error: null,
-      };
+    } catch (aiError) {
+      console.error("AI briefing failed; using deterministic fallback:", aiError);
+      generationMode = "fallback";
+      rawResult = buildFallbackBriefing(input, articlesForBriefing);
     }
+
+    const improvedResult = improveBriefingQuality(
+      toPlainObject(rawResult),
+      input.briefingType,
+      {
+        includeMarketInsights: input.includeMarketInsights,
+        includeChangeAnalysis: input.includeChangeAnalysis,
+      }
+    );
+
+    return {
+      success: true,
+      data: {
+        ...improvedResult,
+        ...sourceMeta,
+        debugVersion: `QUALITY_V4_${generationMode.toUpperCase()}`,
+      },
+      error: null,
+    };
   } catch (error: any) {
-    console.error("Briefing Generation Error Detail:", error);
+    console.error("Briefing generation failed:", error);
+
+    const isAccessError =
+      error?.message === "ACCESS_NOT_APPROVED" ||
+      error?.message === "ADMIN_ACCESS_DENIED";
 
     return {
       success: false,
       data: null,
-      error:
-        error?.message ||
-        "Unexpected error while generating the briefing.",
+      error: isAccessError
+        ? input?.language === "en"
+          ? "Your access could not be verified. Please reload the app and sign in again."
+          : "Dein Zugang konnte nicht verifiziert werden. Bitte lade die App neu und melde dich erneut an."
+        : input?.language === "en"
+          ? "The briefing could not be generated due to a temporary technical error."
+          : "Das Briefing konnte wegen eines vorübergehenden technischen Fehlers nicht erstellt werden.",
     };
   }
 }

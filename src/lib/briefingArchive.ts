@@ -94,7 +94,13 @@ export async function saveAutoBriefing(input: SaveBriefingInput) {
 
   if (error) throw error;
 
-  await trimSavedBriefingsForAccount(input.accountId, 6);
+  try {
+    await trimSavedBriefingsForAccount(input.accountId, 5);
+  } catch (trimError) {
+    // The new briefing is already stored. Archive cleanup must not turn a
+    // successful save into a visible generation error.
+    console.error("Could not trim saved briefing archive:", trimError);
+  }
 
   return mapRowToEntry(data);
 }

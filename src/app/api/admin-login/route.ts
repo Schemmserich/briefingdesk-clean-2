@@ -1,63 +1,48 @@
-import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { supabase } from "@/lib/db/client";
+import { NextResponse } from "next/server";
+import { requireApprovedAdminAccount } from "@/lib/serverAccess";
+
+export const dynamic = "force-dynamic";
+
+function noStoreJson(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      Pragma: "no-cache",
+    },
+  });
+}
+
+function safeStringEqual(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const submittedPasscode = String(body?.passcode ?? "");
-    const adminPasscode = process.env.ADMIN_PASSCODE;
+    const adminPasscode = process.env.ADMIN_PASSCODE ?? "";
 
     if (!adminPasscode) {
-      return NextResponse.json(
+      return noStoreJson(
         { success: false, error: "ADMIN_PASSCODE is not configured." },
-        { status: 500 }
+        500
       );
     }
 
-    if (submittedPasscode !== adminPasscode) {
-      return NextResponse.json(
-        { success: false, error: "Invalid passcode." },
-        { status: 401 }
-      );
+    if (!safeStringEqual(submittedPasscode, adminPasscode)) {
+      return noStoreJson({ success: false, error: "Invalid passcode." }, 401);
     }
+
+    await requireApprovedAdminAccount();
 
     const cookieStore = await cookies();
-    const accountId = cookieStore.get("newsbriefing_account_id")?.value;
-
-    if (!accountId) {
-      return NextResponse.json(
-        { success: false, error: "No account ID found." },
-        { status: 401 }
-      );
-    }
-
-    const { data: currentUser, error } = await supabase
-      .from("tester_accounts")
-      .select("*")
-      .eq("id", accountId)
-      .maybeSingle();
-
-    if (error || !currentUser) {
-      return NextResponse.json(
-        { success: false, error: "Failed to verify admin user." },
-        { status: 500 }
-      );
-    }
-
-    const isAllowedAdmin =
-      currentUser.is_admin === true && currentUser.status === "approved";
-
-    if (!isAllowedAdmin) {
-      return NextResponse.json(
-        { success: false, error: "This user is not allowed to access admin." },
-        { status: 403 }
-      );
-    }
-
-    const response = NextResponse.json({ success: true });
-
-    response.cookies.set("newsbriefing_admin", "true", {
+    cookieStore.set("newsbriefing_admin", "true", {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -65,11 +50,23 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 8,
     });
 
-    return response;
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Login failed." },
-      { status: 500 }
+    return noStoreJson({ success: true });
+  } catch (error: any) {
+    const status =
+      error?.message === "ADMIN_ACCESS_DENIED" ||
+      error?.message === "ACCESS_NOT_APPROVED"
+        ? 403
+        : 500;
+
+    return noStoreJson(
+      {
+        success: false,
+        error:
+          status === 403
+            ? "This user is not allowed to access admin."
+            : "Login failed.",
+      },
+      status
     );
   }
 }

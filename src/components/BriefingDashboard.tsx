@@ -517,13 +517,15 @@ export function BriefingDashboard() {
 
       if (!response?.success) {
         if (accountId) {
-          await logAppError({
+          void logAppError({
             accountId,
             errorMessage: response?.error || "Briefing generation failed",
             context: {
               location: "BriefingDashboard.handleGenerate",
               params: payload,
             },
+          }).catch((logError) => {
+            console.warn("Could not log briefing generation error:", logError);
           });
         }
 
@@ -542,17 +544,33 @@ export function BriefingDashboard() {
       const briefingData = response.data as BriefingResult;
       setResult(briefingData);
 
-      if (accountId) {
-  await saveAutoBriefing({
-    accountId,
-    language: lang,
-    params: payload,
-    briefing: briefingData,
-  });
-}
+      let archiveSaved = false;
 
       if (accountId) {
-        await logUsageEvent({
+        try {
+          await saveAutoBriefing({
+            accountId,
+            language: lang,
+            params: payload,
+            briefing: briefingData,
+          });
+          archiveSaved = true;
+        } catch (archiveError) {
+          console.error("Briefing was generated but archive save failed:", archiveError);
+          void logAppError({
+            accountId,
+            errorMessage:
+              archiveError instanceof Error
+                ? archiveError.message
+                : "Archive save failed",
+            context: {
+              location: "BriefingDashboard.saveAutoBriefing",
+              headline: briefingData.mainTitle ?? "",
+            },
+          }).catch(() => undefined);
+        }
+
+        void logUsageEvent({
           accountId,
           eventType: "briefing_generated",
           payload: {
@@ -564,16 +582,22 @@ export function BriefingDashboard() {
             includeMarketInsights: payload.includeMarketInsights,
             includeChangeAnalysis: payload.includeChangeAnalysis,
             headline: briefingData.mainTitle ?? "",
+            archiveSaved,
           },
+        }).catch((logError) => {
+          console.warn("Could not log briefing generation:", logError);
         });
       }
 
       toast({
         title: lang === "de" ? "Erfolgreich" : "Success",
-        description:
-          lang === "de"
+        description: archiveSaved
+          ? lang === "de"
             ? "Briefing erstellt und automatisch im Archiv gespeichert."
-            : "Briefing generated and automatically saved to archive.",
+            : "Briefing generated and automatically saved to archive."
+          : lang === "de"
+            ? "Briefing erstellt. Das Archiv war vorübergehend nicht erreichbar."
+            : "Briefing generated. The archive was temporarily unavailable.",
       });
     } catch (error: any) {
       const isUnavailable =
@@ -607,7 +631,7 @@ export function BriefingDashboard() {
       }
 
       if (accountId) {
-        await logAppError({
+        void logAppError({
           accountId,
           errorMessage: error?.message || "Unexpected briefing generation error",
           context: {
@@ -622,7 +646,7 @@ export function BriefingDashboard() {
               includeChangeAnalysis: params.includeChangeAnalysis,
             },
           },
-        });
+        }).catch(() => undefined);
       }
 
       toast({
