@@ -2,8 +2,29 @@ import type { BriefingResult, BriefingSection, BriefingType } from "@/lib/types"
 
 const STOPWORDS = new Set([
   "the", "and", "for", "with", "from", "that", "this", "into", "over", "after", "before",
+  "has", "have", "had", "was", "were", "been", "came", "carried", "out", "as", "in", "on", "at",
   "der", "die", "das", "und", "für", "mit", "von", "auf", "aus", "dass", "dies", "nach", "über",
+  "hat", "haben", "hatte", "wurde", "wurden", "war", "waren", "als", "im", "am", "zu", "zum",
+  "zur", "einen", "eine", "einer", "einem", "erfolgte", "erfolgten", "ausgeführt", "durchgeführt",
 ]);
+
+const CONCEPT_PATTERNS: Array<{ pattern: RegExp; concepts: string[] }> = [
+  { pattern: /^(israel|israeli|israelisch)/, concepts: ["israel"] },
+  { pattern: /^(libanon|libanes|lebanon|lebanese)/, concepts: ["lebanon"] },
+  { pattern: /^(usa|u\.s|us|amerika|amerikan|washington)/, concepts: ["usa"] },
+  { pattern: /^(china|chines|peking|beijing)/, concepts: ["china"] },
+  { pattern: /^(angriff|attack|strike|schlag|bombard|beschuss|raid|offensive)/, concepts: ["attack"] },
+  { pattern: /^(vergelt|retaliat)/, concepts: ["attack", "response"] },
+  { pattern: /^(reaktion|reagier|response|respond)/, concepts: ["response"] },
+  { pattern: /^(sanktion|sanction|embargo)/, concepts: ["sanction"] },
+  { pattern: /^(zoll|zölle|tariff|importabgab|duties)/, concepts: ["tariff"] },
+  { pattern: /^(wahl|wähl|election|vote|voting)/, concepts: ["election"] },
+  { pattern: /^(waffenruh|feuerpaus|ceasefire|truce)/, concepts: ["ceasefire"] },
+  { pattern: /^(verhandlung|gespräch|talk|negotiat)/, concepts: ["talks"] },
+  { pattern: /^(zinssenk|ratecut|ratescut)/, concepts: ["rate-cut"] },
+  { pattern: /^(zinserhöh|ratehike|ratesraised)/, concepts: ["rate-hike"] },
+  { pattern: /^(übernahm|übernahme|acquisition|takeover)/, concepts: ["acquisition"] },
+];
 
 const FORMAT_LIMITS: Record<BriefingType, {
   overviewSentences: number;
@@ -64,12 +85,30 @@ function normalize(value: string): string {
     .trim();
 }
 
-function tokens(value: string): Set<string> {
-  return new Set(
-    normalize(value)
-      .split(" ")
-      .filter((token) => token.length >= 3 && !STOPWORDS.has(token))
+function expandToken(token: string): string[] {
+  const concepts = CONCEPT_PATTERNS.flatMap(({ pattern, concepts: values }) =>
+    pattern.test(token) ? values : []
   );
+  return concepts.length ? [...new Set(concepts)] : [token];
+}
+
+function tokens(value: string): Set<string> {
+  const result = new Set<string>();
+
+  for (const token of normalize(value).split(" ")) {
+    if ((token.length < 3 && token !== "us") || STOPWORDS.has(token)) continue;
+    for (const expanded of expandToken(token)) result.add(expanded);
+  }
+
+  return result;
+}
+
+function intersectionSize(a: Set<string>, b: Set<string>): number {
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) intersection += 1;
+  }
+  return intersection;
 }
 
 function similarity(a: string, b: string): number {
@@ -89,17 +128,44 @@ function similarity(a: string, b: string): number {
   const bTokens = tokens(b);
   if (!aTokens.size || !bTokens.size) return 0;
 
-  let intersection = 0;
-  for (const token of aTokens) {
-    if (bTokens.has(token)) intersection += 1;
-  }
-
+  const intersection = intersectionSize(aTokens, bTokens);
   const union = aTokens.size + bTokens.size - intersection;
   return union ? intersection / union : 0;
 }
 
+export function isBriefingTextDuplicate(a: string, b: string): boolean {
+  const directSimilarity = similarity(a, b);
+  const aTokens = tokens(a);
+  const bTokens = tokens(b);
+  if (!aTokens.size || !bTokens.size) return false;
+
+  const intersection = intersectionSize(aTokens, bTokens);
+  const overlap = intersection / Math.min(aTokens.size, bTokens.size);
+  const maxNewDetails = Math.max(
+    aTokens.size - intersection,
+    bTokens.size - intersection
+  );
+  const sharedConcepts = [...aTokens].filter(
+    (token) => bTokens.has(token) && CONCEPT_PATTERNS.some(({ concepts }) => concepts.includes(token))
+  ).length;
+
+  // A sentence that adds several meaningful tokens is allowed to survive even
+  // when it starts by restating an event. This prevents the de-duplication pass
+  // from deleting genuinely new facts such as casualties or market effects.
+  if (directSimilarity >= 0.58 && maxNewDetails <= 1) return true;
+  if (intersection >= 3 && overlap >= 0.7 && maxNewDetails <= 1) return true;
+  if (
+    intersection >= 3 &&
+    sharedConcepts >= 2 &&
+    overlap >= 0.5 &&
+    maxNewDetails <= 1
+  ) return true;
+
+  return false;
+}
+
 function isDuplicate(candidate: string, accepted: string[]): boolean {
-  return accepted.some((existing) => similarity(candidate, existing) >= 0.76);
+  return accepted.some((existing) => isBriefingTextDuplicate(candidate, existing));
 }
 
 function takeUniqueSentences(
@@ -142,10 +208,17 @@ function cleanSections(
     const title = cleanText(section.title);
     if (!title || isDuplicate(title, usedTitles)) continue;
 
-    const content = takeUniqueSentences(section.content, accepted, maxSentences);
+    // A section's first sentence often paraphrases its own headline. Treat the
+    // headline as already stated so only additional information survives.
+    const content = takeUniqueSentences(
+      section.content,
+      [...accepted, title],
+      maxSentences
+    );
     if (!content) continue;
 
     usedTitles.push(title);
+    accepted.push(title, ...splitSentences(content));
     result.push({ title, content });
   }
 

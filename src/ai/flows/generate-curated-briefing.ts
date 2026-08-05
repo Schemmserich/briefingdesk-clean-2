@@ -79,13 +79,20 @@ EDITORIAL PRIORITIZATION
 
 ANTI-REPETITION RULES
 - mainTitle: one concise editorial headline; do not include the output-format name.
-- overviewParagraph: synthesize the overall picture; do not copy section titles or retell every section.
-- sections: add only new facts, context or consequences not already stated verbatim in the overview.
+- Assign every concrete event, fact and causal explanation to exactly ONE output field.
+- overviewParagraph: synthesize the overall picture; do not copy section titles or preview an event that a section then restates.
+- If the overview names a concrete event, the corresponding section must begin with genuinely new detail, context or consequence. Never restate the event with synonyms.
+- sections: add only information not already conveyed in the overview or another section. A paraphrase counts as repetition even when it uses different verbs or nouns.
 - whyMarketsCare: explain transmission channels to markets; do not summarize the news again.
 - whatChanged: state what is new within the selected window; do not repeat background facts.
 - Never repeat the article count, source count, selected filters, timeframe or app instructions in prose.
 - Avoid filler such as “several developments were important”, “the situation remains dynamic”, or source-name lists.
 - No sentence may appear twice or be closely paraphrased in two fields.
+
+FINAL SILENT EDIT
+- Before returning the result, compare the overview, every section, whyMarketsCare and whatChanged.
+- Delete every sentence whose core actor, event and location/cause were already conveyed elsewhere.
+- Example of forbidden repetition: “Israel carried out a retaliatory strike in Lebanon” followed by “Israeli attacks in Lebanon came in response”. Keep the fact once; use the later sentence only for genuinely new information.
 
 FORMAT CONTRACT FOR "{{briefingType}}"
 1. Ultra Short Update

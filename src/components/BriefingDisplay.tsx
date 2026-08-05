@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { BriefingAudioPlayer } from "@/components/BriefingAudioPlayer";
 import { TrustIndexInfoButton } from "@/components/TrustIndexInfoButton";
 import { i18n } from "@/lib/i18n";
+import { isBriefingTextDuplicate } from "@/lib/briefingQuality";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -309,19 +310,29 @@ function inferCategoryKeyFromSection(section: BriefingSection): string {
 
 function buildFullText(briefing: BriefingDisplayData) {
   const parts: string[] = [];
+  const accepted: string[] = [];
 
   const overview = safeText(briefing.overviewParagraph);
-  if (overview) parts.push(overview);
+  if (overview) {
+    parts.push(overview);
+    accepted.push(overview);
+  }
 
   for (const section of briefing.sections ?? []) {
     const title = safeText(section.title);
     const content = safeText(section.content);
 
-    if (title && content) {
+    const titleAddsInformation =
+      title && !accepted.some((part) => isBriefingTextDuplicate(title, part));
+
+    if (titleAddsInformation && content) {
       parts.push(`${title}: ${content}`);
     } else if (content) {
       parts.push(content);
     }
+
+    if (titleAddsInformation) accepted.push(title);
+    if (content) accepted.push(content);
   }
 
   const whyMarketsCare = safeText(briefing.whyMarketsCare);
