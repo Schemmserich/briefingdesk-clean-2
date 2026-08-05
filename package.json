@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:quality": "node --import tsx --test src/lib/briefingQuality.test.ts",
     "import:articles": "node --env-file=.env --import tsx src/scripts/seed-import.ts"
   },
   "dependencies": {
