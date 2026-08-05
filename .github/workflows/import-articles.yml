@@ -5,7 +5,7 @@ on:
     # Keep the half-hour cadence, but avoid the busiest top-of-hour window.
     # Editing the schedule also reactivates workflows disabled by GitHub
     # after extended repository inactivity.
-    - cron: "7,37 * * * *"
+    - cron: "27,57 * * * *"
   workflow_dispatch:
 
 jobs:
